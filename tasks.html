@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasks &middot; Ledger of Days</title>
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IM+Fell+English+SC&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="tasks">
+
+<header class="masthead">
+  <h1 class="masthead__title">Ledger of Days</h1>
+  <nav class="masthead__nav">
+    <a href="index.html">Today</a>
+    <a href="tasks.html" aria-current="page">Tasks</a>
+  </nav>
+</header>
+
+<main class="wrap wrap--wide">
+
+  <section class="panel">
+    <h2 class="panel__title" id="formTitle">New task</h2>
+    <form class="form" id="taskForm" novalidate>
+      <input type="hidden" id="f_id">
+
+      <label class="field">
+        <span class="field__label">Label</span>
+        <input class="input" id="f_label" maxlength="60" autocomplete="off" required>
+      </label>
+
+      <fieldset class="field">
+        <legend class="field__label">Icon</legend>
+        <div class="picker" id="f_icon"></div>
+      </fieldset>
+
+      <div class="field field--split">
+        <label>
+          <span class="field__label">House</span>
+          <select class="input" id="f_color"></select>
+        </label>
+        <label>
+          <span class="field__label">Start</span>
+          <input class="input mono" id="f_start" type="time" required>
+        </label>
+        <label>
+          <span class="field__label">End</span>
+          <input class="input mono" id="f_end" type="time" required>
+        </label>
+      </div>
+
+      <fieldset class="field">
+        <legend class="field__label">Days <em class="field__note">none selected &rarr; every day</em></legend>
+        <div class="days" id="f_days"></div>
+      </fieldset>
+
+      <p class="form__error mono" id="f_error" role="alert"></p>
+
+      <div class="form__actions">
+        <button class="btn btn--primary" type="submit">Save</button>
+        <button class="btn" type="button" id="f_cancel">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel__title">All tasks</h2>
+    <ul class="list" id="taskList"></ul>
+  </section>
+
+</main>
+
+<footer class="sync" id="sync"></footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>
