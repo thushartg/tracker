@@ -150,12 +150,16 @@ Show **one** task as the hero, plus at most **two** dimmed. More than that and t
 Double-click the hero task:
 
 1. Checkmark appears immediately. Task is marked done in `localStorage` right away.
-2. A dragon enters from the side, crosses, and breathes fire over the task.
-3. The task burns away and is removed from Home.
+2. Fire rises from the base of the card in a wave, left to right, and the word **Dracarys** appears to the side.
+3. The task chars, burns away, and is removed from Home.
+
+No dragon. It was tried twice — heraldic line art and a hand drawing — and both read as flat cutouts sliding across the screen. Fire alone is better, and it is the part that always looked right.
+
+The fire is built from two layers of small SVG tongues at different blurs and opacities, screen-blended so they add light rather than occlude the card. Gradients and soft edges are what make it read as fire; solid shapes read as clipart.
 
 The animation is decorative and runs **after** the state change. If it stutters or is interrupted, the completion still stands. Never gate the data write on the animation finishing.
 
-Respect `prefers-reduced-motion`: skip the dragon, fade the task out instead.
+Respect `prefers-reduced-motion`: skip the fire, fade the task out instead. The word may stay, since it is text and not motion.
 
 ---
 
@@ -233,5 +237,8 @@ Current artwork:
 | Asset | Source | Rights |
 |---|---|---|
 | Task icons (`ICONS` in `app.js`) | original | — |
-| Fire plume (`dragonHTML` in `app.js`) | original | — |
-| `dragon.svg` | Graham Johnston's heraldic dragon passant, in A. C. Fox-Davies, *A Complete Guide to Heraldry* (1909), via Wikimedia Commons | Public domain (`PD-old-70-expired`). No attribution required; provenance recorded in the file header anyway. Recoloured to `currentColor`, coordinates rounded. |
+| Fire (`FLAME_SHAPES` / `pyreHTML` in `app.js`) | original | — |
+
+The word **Dracarys** is fine. A single invented word is not copyrightable, and this rule bars art, screenshots, logos, and sigils — not vocabulary. It is decorative text on a personal site, not branding on a product.
+
+Character designs are not fine, in any form. That includes 3D models, fan sculpts, game rips, and traced silhouettes — a render of a copyrighted creature is still a derivative of it.

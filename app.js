@@ -391,59 +391,70 @@ function complete(el, id, grand) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   animating = true;
 
-  if (!grand || reduced) {                  // fade, no dragon
+  if (!grand || reduced) {                  // fade, no fire
     el.classList.add('fade-out');
     setTimeout(finish, 360);
     return;
   }
 
-  if (!dragonArt) {                         // asset never arrived — fade instead
-    el.classList.add('fade-out');
-    setTimeout(finish, 360);
-    return;
-  }
-
-  const stage = $('#stage');
-  stage.insertAdjacentHTML('beforeend', dragonHTML());
-  const dragon = $('.dragon', stage);
-  dragon.style.setProperty('--travel', `${stage.offsetWidth + 300}px`);
-  setTimeout(() => el.classList.add('is-burning'), 1000);
-  setTimeout(finish, 2500);
+  $('#stage').insertAdjacentHTML('beforeend', pyreHTML());
+  el.classList.add('is-burning');
+  setTimeout(finish, 1900);          // card goes first; the last tongues outlive it
 
   function finish() { animating = false; renderHome(); }
-}
-
-/* The dragon is a separate asset so app.js stays readable. Fetched once, kept in
-   memory, and never on the critical path — the completion is already written. */
-let dragonArt = null;
-
-function loadDragon() {
-  fetch('dragon.svg', { cache: 'force-cache' })
-    .then((r) => (r.ok ? r.text() : null))
-    .then((svg) => { if (svg && svg.includes('<svg')) dragonArt = svg; })
-    .catch(() => { /* stays null; completions fall back to a fade */ });
 }
 
 const checkHTML = () => `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="m4 12.6 5.2 5.4L20 5.6"/></svg>`;
 
-/* Public-domain heraldic dragon (see dragon.svg) plus an original fire plume,
-   which is drawn outside the mirrored art so the flame keeps its direction. */
-const dragonHTML = () => `
-<div class="dragon" aria-hidden="true"><div class="dragon__bob">
-  <div class="dragon__art">${dragonArt}</div>
-  <svg class="dragon__fire" viewBox="0 0 140 70" fill="none" aria-hidden="true">
-    <defs><linearGradient id="dragonfire" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#FFE9C4"/><stop offset=".4" stop-color="#FF8A1E"/>
-      <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
-    </linearGradient></defs>
-    <path d="M4 20C30 6 68 14 136 46c-30-8-56-6-74-12c8 8 12 14 14 20
-             c-20-8-40-18-58-24c-10-3-16-6-14-10Z" fill="url(#dragonfire)"/>
-    <path d="M8 24c26 0 56 10 92 28" stroke="#FFE9C4" stroke-width="2" opacity=".7"/>
-    <path d="M8 17c30-4 62 8 100 28" stroke="#FFB458" stroke-width="2" opacity=".45"/>
-  </svg>
-</div></div>`;
+/* Fire, faked the way fire is usually faked: two layers of small tongues at
+   different blurs and opacities, screen-blended so they glow instead of
+   occluding. Decorative only — the write already landed. */
+
+/* Slender tapering tongues; three silhouettes so the wave never looks stamped. */
+const FLAME_SHAPES = [
+  'M15 100C4 84 2 62 7 42 10 30 14 16 15 0c2 16 6 30 9 42 5 20 3 42-9 58Z',
+  'M13 100C3 82 3 58 10 40 14 29 19 15 22 2c-2 16 0 28 2 40 3 20 0 42-11 58Z',
+  'M17 100C28 82 27 58 20 40 16 29 11 15 8 2c2 16 0 28-2 40-3 20 0 42 11 58Z'
+];
+
+/* Deterministic jitter — varied but identical every burn, so it can be eyeballed. */
+const jitter = (i, salt) => {
+  const x = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+function flameLayer(cls, count, minH, maxH) {
+  const tongues = Array.from({ length: count }, (_, i) => {
+    const left  = (i / count) * 108 - 4 + jitter(i, 1) * 6;
+    const width = 7 + jitter(i, 2) * 7;
+    const tall  = minH + jitter(i, 3) * (maxH - minH);
+    const delay = i * 0.05 + jitter(i, 4) * 0.12;
+    const dur   = 0.72 + jitter(i, 5) * 0.34;
+    const shape = FLAME_SHAPES[i % FLAME_SHAPES.length];
+    return `<span class="tongue" style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%;
+      height:${tall.toFixed(1)}%;animation-delay:${delay.toFixed(2)}s;
+      animation-duration:${dur.toFixed(2)}s"><svg viewBox="0 0 30 100" preserveAspectRatio="none"
+      ><path d="${shape}" fill="url(#flameGrad)"/></svg></span>`;
+  }).join('');
+  return `<div class="pyre__layer ${cls}">${tongues}</div>`;
+}
+
+const pyreHTML = () => `
+<div class="pyre" aria-hidden="true">
+  <svg class="pyre__defs" aria-hidden="true"><defs>
+    <linearGradient id="flameGrad" x1="0" y1="1" x2="0" y2="0">
+      <stop class="flame-base" offset="0"/>
+      <stop class="flame-mid"  offset=".3"/>
+      <stop class="flame-hot"  offset=".62"/>
+      <stop class="flame-tip"  offset="1"/>
+    </linearGradient>
+  </defs></svg>
+  ${flameLayer('pyre__layer--back', 11, 46, 88)}
+  ${flameLayer('pyre__layer--front', 14, 26, 58)}
+</div>
+<p class="dracarys" aria-hidden="true">Dracarys</p>`;
 
 function wireHome() {
   const target = (e) => e.target.closest('.card, .row');
@@ -458,7 +469,6 @@ function wireHome() {
     e.preventDefault();
     complete(el, el.dataset.id, el.classList.contains('card'));
   });
-  loadDragon();
   setInterval(() => { if (!animating) renderHome(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !animating) renderHome(); });
 }
