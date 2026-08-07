@@ -520,6 +520,7 @@ function fillForm(task) {
   $('#f_start').value = task ? task.window.start : '';
   $('#f_end').value = task ? task.window.end : '';
   $('#f_error').textContent = '';
+  ['#f_label', '#f_start', '#f_end'].forEach((sel) => flag($(sel), false));
 
   const iconKey = task ? task.icon : 'shield';
   $('#f_icon').querySelectorAll('[data-icon]').forEach((b) =>
@@ -529,16 +530,39 @@ function fillForm(task) {
     b.setAttribute('aria-pressed', String(days.includes(+b.dataset.day))));
 }
 
+const flag = (input, bad) => input.setAttribute('aria-invalid', String(!!bad));
+
+/**
+ * A time input can sit half-entered — the field shows "09:--" but `value` is
+ * empty and `badInput` is true. That is a different mistake from a malformed
+ * value, and reporting it as one sends people looking for the wrong problem.
+ */
+function timeProblem(input, which) {
+  if (input.validity.badInput) return `Finish entering the ${which} time, including AM/PM.`;
+  if (!input.value.trim())     return `${which === 'start' ? 'Start' : 'End'} time is required.`;
+  if (toMinutes(input.value.trim()) === null) {
+    return `${which === 'start' ? 'Start' : 'End'} time is not a valid 24-hour time.`;
+  }
+  return null;
+}
+
 /** Invalid windows are rejected here, not on the home page. */
 function readForm() {
-  const label = $('#f_label').value.trim();
-  if (!label) return { error: 'A task needs a label.' };
+  const labelEl = $('#f_label'), startEl = $('#f_start'), endEl = $('#f_end');
 
-  const start = $('#f_start').value.trim(), end = $('#f_end').value.trim();
+  const label = labelEl.value.trim();
+  if (!label) return { error: 'A task needs a label.', field: labelEl };
+
+  const startErr = timeProblem(startEl, 'start');
+  if (startErr) return { error: startErr, field: startEl };
+  const endErr = timeProblem(endEl, 'end');
+  if (endErr) return { error: endErr, field: endEl };
+
+  const start = startEl.value.trim(), end = endEl.value.trim();
   const s = toMinutes(start), e = toMinutes(end);
-  if (s === null) return { error: 'Start time is not a valid 24-hour time.' };
-  if (e === null) return { error: 'End time is not a valid 24-hour time.' };
-  if (s === e)    return { error: 'Start and end cannot be the same — the window would be empty.' };
+  if (s === e) {
+    return { error: 'Start and end cannot be the same — the window would be empty.', field: endEl };
+  }
 
   const pressed = (sel) => [...document.querySelectorAll(sel)].filter((b) => b.getAttribute('aria-pressed') === 'true');
   const iconKey = (pressed('#f_icon [data-icon]')[0] || {}).dataset?.icon || 'shield';
@@ -567,10 +591,24 @@ function wireTasks() {
   buildForm();
   fillForm(null);
 
+  /* Flag a half-entered time as soon as focus leaves it, so it is obvious which
+     field is unfinished without waiting for a save. Clear it as they correct it. */
+  ['#f_start', '#f_end'].forEach((sel) => {
+    const input = $(sel);
+    input.addEventListener('blur', () => flag(input, input.validity.badInput));
+    input.addEventListener('input', () => { if (!input.validity.badInput) flag(input, false); });
+  });
+
   $('#taskForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    const { task, error } = readForm();
-    if (error) { $('#f_error').textContent = error; return; }
+    ['#f_label', '#f_start', '#f_end'].forEach((sel) => flag($(sel), false));
+
+    const { task, error, field } = readForm();
+    if (error) {
+      $('#f_error').textContent = error;
+      if (field) { flag(field, true); field.focus(); }
+      return;
+    }
 
     const i = store.tasks.findIndex((t) => t.id === task.id);
     if (i >= 0) store.tasks[i] = task; else store.tasks.push(task);

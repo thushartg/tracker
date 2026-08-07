@@ -407,6 +407,11 @@ a { color: var(--parchment); text-decoration: none; }
 .input:focus { border-color: var(--dust); }
 select.input { appearance: none; }
 
+/* Unfinished or rejected field. Border and label only — no glow. */
+.input[aria-invalid="true"],
+.input[aria-invalid="true"]:focus { border-color: #C25A1E; }
+label:has(.input[aria-invalid="true"]) .field__label { color: #C25A1E; }
+
 .picker { display: flex; flex-wrap: wrap; gap: var(--s2); }
 
 .picker button, .days button {
