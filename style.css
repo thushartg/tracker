@@ -113,6 +113,17 @@ a { color: var(--parchment); text-decoration: none; }
   margin-left: calc(50vw - var(--s5) - var(--poly-w) / 2);
 }
 
+/* The bar and its hint centre on the viewport too, under the polygon. Their
+   width is set by their content, so the shift back is a transform — a percentage
+   there is a percentage of the element itself, which a margin cannot do. */
+[data-page="home"] .piece__bar,
+[data-page="home"] .piece__hint {
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--s5));
+  margin-left: calc(50vw - var(--s5));
+  transform: translateX(-50%);
+}
+
 .dateline {
   color: var(--dust);
   text-transform: uppercase;
