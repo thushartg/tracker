@@ -213,13 +213,15 @@ Two sources, in `app.js`:
 
 **How a task finds its subject** (`subjectFor`), in order:
 
-1. **Label**, but only for subjects the icon picker cannot express — currently just `piano`. Word-boundary prefix match, case-insensitive.
+1. **Label**, but only for subjects the icon picker cannot express — `SUBJECT_WORDS` maps those to the words that reach them (`piano`; `monitor` via computer/leetcode/code/…). Word-boundary prefix match, case-insensitive, so "Decode audio" does not find `code`.
 2. **Icon key**.
 3. Generated.
 
 The label pass is deliberately narrow. Every icon key is authored, so an icon always matches at step 2 — which is why a task called Piano was getting a goblet. Letting the label win outright would be worse: naming a task "Morning run" while picking the book icon should still get a book, because that icon was a deliberate choice. The label only fills a gap the icon list has no way to express.
 
-To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key it is picked up automatically; if not, it becomes label-addressable with no further wiring.
+To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key it is picked up automatically; if not, give it an entry in `SUBJECT_WORDS`.
+
+**Moving parts.** A facet declared with `fp(tag, …)` instead of `f(…)` is tagged; `groupFacets` wraps each consecutive run of same-tagged facets in a `<g class="limb limb--tag">`. The group carries the movement and the facets inside keep their own idle and shatter animations, so the two compose rather than fight. The runner uses it for four limbs, swinging about shoulders and hips — `transform-box: view-box` puts `transform-origin` in the artwork's own 0..100 coordinates, which is where those joints are. Limbs stop while the piece is shattering; a limb still swinging as its own shards fly apart reads as two things at once.
 
 The idle loop is facet opacity, out of phase, nothing more. No glow, no filter. `prefers-reduced-motion` stops it dead at full opacity.
 

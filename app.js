@@ -352,6 +352,9 @@ window.addEventListener('online', flush);
 
 const f = (s, ...p) => ({ s, p });
 
+/** Same, but tagged — consecutive facets sharing a tag become one moving limb. */
+const fp = (k, s, ...p) => ({ s, p, k });
+
 /* Light from the upper left, so shading stays consistent across every subject. */
 const litBy = (x, y) => Math.max(0, Math.min(1, 0.58 - ((x - 50) / 100 + (y - 50) / 100)));
 
@@ -424,16 +427,16 @@ const SUBJECTS = {
     f(.88, 60, 7, 67, 11, 67, 19, 60, 23, 53, 19, 53, 11),      // head
     f(.60, 50, 27, 64, 25, 57, 53, 44, 55),                     // torso
     f(.76, 58, 26, 64, 25, 57, 53),                             // chest, to the light
-    f(.74, 63.4, 24.4, 78.4, 32.4, 75.6, 37.6, 60.6, 29.6),     // lead upper arm
-    f(.82, 74.6, 33.2, 83.6, 21.2, 88.4, 24.8, 79.4, 36.8),     // lead forearm
-    f(.38, 49, 25.8, 53, 30.2, 40, 42.2, 36, 37.8),             // trailing upper arm
-    f(.44, 40.1, 37.9, 30.1, 27.9, 25.9, 32.1, 35.9, 42.1),     // trailing forearm
-    f(.68, 52, 51, 58, 50, 74, 57, 69, 62),                     // lead thigh, knee driven up
-    f(.72, 69, 58, 74, 57, 76, 76, 70, 77),                     // lead shin
-    f(.84, 70, 74, 76, 76, 80, 82, 69, 81),                     // lead foot
-    f(.40, 44, 52, 50, 53, 38, 70, 32, 66),                     // trailing thigh
-    f(.46, 32, 66, 38, 70, 30, 86, 24, 82),                     // trailing shin, extended back
-    f(.34, 24, 82, 30, 86, 20, 90, 16, 86)                      // trailing foot
+    fp('armA', .74, 63.4, 24.4, 78.4, 32.4, 75.6, 37.6, 60.6, 29.6),  // lead upper arm
+    fp('armA', .82, 74.6, 33.2, 83.6, 21.2, 88.4, 24.8, 79.4, 36.8),  // lead forearm
+    fp('armB', .38, 49, 25.8, 53, 30.2, 40, 42.2, 36, 37.8),          // trailing upper arm
+    fp('armB', .44, 40.1, 37.9, 30.1, 27.9, 25.9, 32.1, 35.9, 42.1),  // trailing forearm
+    fp('legA', .68, 52, 51, 58, 50, 74, 57, 69, 62),                  // lead thigh
+    fp('legA', .72, 69, 58, 74, 57, 76, 76, 70, 77),                  // lead shin
+    fp('legA', .84, 70, 74, 76, 76, 80, 82, 69, 81),                  // lead foot
+    fp('legB', .40, 44, 52, 50, 53, 38, 70, 32, 66),                  // trailing thigh
+    fp('legB', .46, 32, 66, 38, 70, 30, 86, 24, 82),                  // trailing shin
+    fp('legB', .34, 24, 82, 30, 86, 20, 90, 16, 86)                   // trailing foot
   ],
 
   book: () => [
@@ -528,6 +531,20 @@ const SUBJECTS = {
     return out;
   },
 
+  monitor: () => [
+    f(.30, 12, 8, 88, 8, 90, 15, 10, 15),            // bezel, top edge to the light
+    f(.22, 10, 15, 90, 15, 88, 64, 12, 64),          // bezel face
+    f(.80, 17, 20, 83, 20, 81, 59, 19, 59),          // screen
+    f(.95, 17, 20, 48, 20, 19, 59),                  // glare across the corner
+    f(.12, 24, 26, 56, 26, 56, 30, 24, 30),          // lines of code
+    f(.12, 30, 34, 66, 34, 66, 38, 30, 38),
+    f(.12, 30, 42, 52, 42, 52, 46, 30, 46),
+    f(.12, 24, 50, 44, 50, 44, 54, 24, 54),
+    f(.42, 44, 64, 56, 64, 58, 78, 42, 78),          // neck
+    f(.34, 32, 78, 68, 78, 74, 86, 26, 86),          // base
+    f(.24, 26, 86, 74, 86, 72, 92, 28, 92)           // base, front lip
+  ],
+
   key: () => [
     ...annulus(32, 30, 18, 9, 8),                    // bow
     f(.04, 32, 21, 41, 30, 32, 39, 23, 30),          // its hole
@@ -577,11 +594,15 @@ function gemFacets(id) {
   return out;
 }
 
-/* Subjects the icon picker cannot express — there is no `piano` icon. Longest
-   first, so a longer name is never shadowed by a shorter one. */
-const EXTRA_SUBJECTS = Object.keys(SUBJECTS)
-  .filter((k) => !ICONS[k])
-  .sort((a, b) => b.length - a.length);
+/**
+ * Subjects the icon picker cannot express, and the words that reach them.
+ * A subject needs an entry here only if it has no matching icon key; anything
+ * named after an icon is found by the icon alone.
+ */
+const SUBJECT_WORDS = {
+  piano:   ['piano'],
+  monitor: ['monitor', 'computer', 'laptop', 'leetcode', 'leet', 'code', 'coding', 'dsa']
+};
 
 /**
  * Label first, but **only** for subjects the icon list has no key for, then the
@@ -594,8 +615,9 @@ const EXTRA_SUBJECTS = Object.keys(SUBJECTS)
  */
 function subjectFor(task) {
   const label = String(task.label || '');
-  const extra = EXTRA_SUBJECTS.find((w) => new RegExp(`\\b${w}`, 'i').test(label));
-  if (extra) return SUBJECTS[extra];
+  for (const [name, words] of Object.entries(SUBJECT_WORDS)) {
+    if (words.some((w) => new RegExp(`\\b${w}`, 'i').test(label))) return SUBJECTS[name];
+  }
   return SUBJECTS[task.icon] || null;
 }
 
@@ -622,6 +644,28 @@ function shardOf(fc, i) {
   };
 }
 
+/**
+ * Emits the facets, wrapping each consecutive run of same-tagged ones in a `<g>`.
+ * The group carries the limb's swing; the polygons inside keep their own idle
+ * and shatter animations, so the two compose instead of fighting.
+ */
+function groupFacets(facets, pts) {
+  const groups = [];
+  facets.forEach((fc, i) => {
+    const s = shardOf(fc, i);
+    /* --i drives the stagger for all three facet animations; the delay lives in
+       CSS so the breakup can stagger far tighter than the idle loop. */
+    const poly = `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
+      style="--i:${i};--dx:${s.x}px;--dy:${s.y}px;--rot:${s.r}deg"/>`;
+    const last = groups[groups.length - 1];
+    if (fc.k && last && last.k === fc.k) last.html += poly;
+    else groups.push({ k: fc.k, html: poly });
+  });
+  return groups
+    .map((g) => (g.k ? `<g class="limb limb--${g.k}">${g.html}</g>` : g.html))
+    .join('');
+}
+
 function polyHTML(task) {
   const facets = facetsFor(task);
   const pts = (p) => {
@@ -631,13 +675,7 @@ function polyHTML(task) {
   };
   return `<svg class="poly" viewBox="0 0 100 100" role="img"
                aria-label="${esc(task.label)}" preserveAspectRatio="xMidYMid meet">
-    ${facets.map((fc, i) => {
-      const s = shardOf(fc, i);
-      /* --i drives the stagger for all three animations; the delay lives in CSS
-         so the breakup can stagger far tighter than the idle loop. */
-      return `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
-        style="--i:${i};--dx:${s.x}px;--dy:${s.y}px;--rot:${s.r}deg"/>`;
-    }).join('')}
+    ${groupFacets(facets, pts)}
   </svg>`;
 }
 

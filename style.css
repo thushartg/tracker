@@ -197,6 +197,30 @@ a { color: var(--parchment); text-decoration: none; }
   50%      { opacity: .82; }
 }
 
+/* The runner's limbs swing about their joints. The group carries the swing so
+   the facets inside keep their own idle and shatter animations underneath;
+   `view-box` puts transform-origin in the artwork's own 0..100 coordinates,
+   which is where the shoulders and hips are. Opposite arm with opposite leg. */
+.limb { transform-box: view-box; }
+.limb--armA { transform-origin: 58px 27px; animation: stride-a 1s ease-in-out infinite; }
+.limb--armB { transform-origin: 51px 28px; animation: stride-b 1s ease-in-out infinite; }
+.limb--legA { transform-origin: 55px 52px; animation: stride-b 1s ease-in-out infinite; }
+.limb--legB { transform-origin: 47px 53px; animation: stride-a 1s ease-in-out infinite; }
+
+@keyframes stride-a {
+  0%, 100% { transform: rotate(-15deg); }
+  50%      { transform: rotate(15deg); }
+}
+@keyframes stride-b {
+  0%, 100% { transform: rotate(15deg); }
+  50%      { transform: rotate(-15deg); }
+}
+
+/* A limb still swinging while its own shards fly apart reads as two things
+   happening at once. */
+.poly--shatter .limb,
+.poly--form .limb { animation: none; }
+
 /* Changing task: the piece breaks apart, then the next one gathers out of the
    same scatter. Both read --dx/--dy/--rot, set per facet in polyHTML, so a
    shard leaves along the line it arrives on. */
@@ -281,6 +305,7 @@ a { color: var(--parchment); text-decoration: none; }
   .poly polygon,
   .poly--shatter polygon,
   .poly--form polygon { animation: none; opacity: 1; transform: none; }
+  .limb { animation: none; transform: none; }
 }
 
 /* checkmark — appears the instant the write lands */
