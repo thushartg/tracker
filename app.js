@@ -135,6 +135,21 @@ const store = {
     this.saveLog(day.slice(0, 7));
   },
 
+  /**
+   * Taking a completion back writes `done: false` — a tombstone, not a delete.
+   * `mergeMonth` spreads remote first and local second, so a key removed
+   * locally is simply absent from the local side and the remote `done: true`
+   * survives the next flush. Only a value can outrank a value.
+   */
+  uncomplete(id) {
+    const day = todayKey();
+    const entries = this.log[day];
+    if (!entries || !entries[id]) return false;
+    entries[id] = { done: false, at: isoLocal() };
+    this.saveLog(day.slice(0, 7));
+    return true;
+  },
+
   monthSlice(month) {
     const out = {};
     for (const [date, entries] of Object.entries(this.log)) {
@@ -402,6 +417,8 @@ function renderHome() {
   $('#dateline').textContent = d.toLocaleDateString(undefined,
     { weekday: 'long', day: 'numeric', month: 'long' });
 
+  renderKept();
+
   if (!store.tasks.length) {
     stage.innerHTML = `<div class="state">${icon('quill')}
       <p class="state__title">No tasks yet</p>
@@ -425,6 +442,38 @@ function renderHome() {
   }
 
   list.innerHTML = dimmed.map(([t, kind]) => rowHTML(t, kind, m)).join('');
+}
+
+/* ------------------------------------------------------------ kept today */
+
+/** Today's completions, oldest first, so the newest lands at the bottom. */
+function keptToday() {
+  const done = store.doneToday();
+  return store.tasks
+    .filter((t) => done[t.id] && done[t.id].done)
+    .sort((a, b) => String(done[a.id].at).localeCompare(String(done[b.id].at)));
+}
+
+function renderKept() {
+  const box = $('#kept');
+  if (!box) return;
+
+  const kept = keptToday();
+  box.hidden = !kept.length;
+  if (!kept.length) { box.innerHTML = ''; return; }
+
+  box.innerHTML = `
+    <h2 class="kept__title">Kept today</h2>
+    <ul class="kept__list">
+      ${kept.map((t) => `
+        <li class="kept__item" data-house="${t.color}">
+          ${icon(t.icon)}
+          <span class="kept__label">${esc(t.label)}</span>
+          <button type="button" class="btn btn--quiet kept__undo" data-undo="${esc(t.id)}"
+                  title="Put ${esc(t.label)} back"
+                  aria-label="Put ${esc(t.label)} back">&#8630;</button>
+        </li>`).join('')}
+    </ul>`;
 }
 
 /* ------------------------------------------------------------- the burn  */
@@ -511,6 +560,19 @@ function wireHome() {
   document.addEventListener('dblclick', (e) => {
     const el = target(e);
     if (el) complete(el, el.dataset.id, el.classList.contains('card'));
+  });
+
+  /* Only today's completions can be taken back. The box holds nothing else —
+     but a tab left open past midnight is still showing yesterday's, so the
+     entry is re-checked against today rather than trusted from the render. */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-undo]');
+    if (!btn || animating) return;
+    const entry = store.doneToday()[btn.dataset.undo];
+    if (!entry || !entry.done) { renderHome(); return; }
+    store.uncomplete(btn.dataset.undo);
+    scheduleFlush();
+    renderHome();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;

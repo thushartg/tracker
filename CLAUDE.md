@@ -129,6 +129,14 @@ Every write sends the current `sha`. No exceptions.
 
 Log timestamps carry an offset. Window definitions do not.
 
+### Undo is a tombstone
+
+Taking a completion back writes `{ "done": false, "at": ... }`. It must **never** delete the key.
+
+`mergeMonth` spreads remote first and local second, so a key deleted locally is merely absent from the local side and the remote `done: true` survives the next flush — the task would come back done. Only a value can outrank a value.
+
+Everything that reads the log tests `.done` rather than key presence, so `done: false` correctly reads as outstanding on Home and as a non-completion in the task history.
+
 ### Time handling
 
 - Normalize `start` and `end` to minutes-since-midnight for all comparisons.
@@ -166,6 +174,14 @@ The fire is built from two layers of small SVG tongues at different blurs and op
 The animation is decorative and runs **after** the state change. If it stutters or is interrupted, the completion still stands. Never gate the data write on the animation finishing.
 
 Respect `prefers-reduced-motion`: skip the fire, fade the task out instead. The word may stay, since it is text and not motion.
+
+### Kept today
+
+A small box pinned to the bottom-right corner, listing what has been completed today, oldest first. Hidden entirely when nothing has been kept. Below `34rem` it drops into normal flow at the end of the page rather than floating — on a narrow screen it would cover the task it is reporting on.
+
+Each entry has an undo control that puts the task back on the page. **Only today's completions can be undone** — the box holds nothing else, but a tab left open past midnight will still be showing yesterday's, so the handler re-checks the entry against today instead of trusting what was rendered.
+
+Undo is not a delete. See below.
 
 ---
 
