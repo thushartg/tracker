@@ -181,6 +181,8 @@ Show **one** task, never a list. The dimmed secondary rows are gone; arrows repl
 
 The task fills the page as a low-poly illustration — flat triangular facets shaded off its house accent — with its name, number and window on a bar beneath, and a round arrow either side.
 
+**One layer.** The illustration sits directly on `--ash`. No card, no `--iron` surface, no border, no accent bar down the side, no rule under the art. The empty and done states are flat for the same reason — they stand in the same slot, and a bordered box there would read as a bug. The only rule on the page is the short vertical one between the number and the name.
+
 - **Arrows page the same ranking the hero came from.** `resolveDay` returns `order`, the resolution order continued past the hero. Paging forward walks down it, so the arrows can never contradict the answer the page opened on. Position `1/n` is always the hero.
 - The list **wraps at both ends**. It is a loop, not a scroll.
 - `stageIx` is **clamped, never reset**. The 60-second re-render must not yank the page back to the hero mid-browse.
@@ -194,10 +196,18 @@ Original. Facets are `{ s, p }` — a shade in `0..1` and a flat list of `x,y` i
 
 Two sources, in `app.js`:
 
-- `SUBJECTS` — hand-authored subjects per icon key. Currently `sun`, `moon`, `run`, `book`, `blade`, `tower`, `flame`.
-- `gemFacets(id)` — a generated faceted form for every other key, seeded from the task id. Star-shaped around its centre by construction (core plus two rings), so facets tile without overlapping whatever the seed, and the same id always gives the same form.
+- `SUBJECTS` — hand-authored. **All twelve icon keys** are drawn, plus `piano`, which has no icon key.
+- `gemFacets(id)` — a generated faceted form seeded from the task id. Star-shaped around its centre by construction (core plus two rings), so facets tile without overlapping whatever the seed, and the same id always gives the same form. Now a **safety net**: with every icon key authored and `normalize()` forcing an unknown icon to `shield`, it should not be reached in normal use. Keep it — it is what guarantees `facetsFor()` never returns nothing.
 
-`facetsFor()` picks authored art when it exists and generates otherwise, so **no task is ever art-less**. Adding a subject to `SUBJECTS` is the only step needed to promote one.
+**How a task finds its subject** (`subjectFor`), in order:
+
+1. **Label**, but only for subjects the icon picker cannot express — currently just `piano`. Word-boundary prefix match, case-insensitive.
+2. **Icon key**.
+3. Generated.
+
+The label pass is deliberately narrow. Every icon key is authored, so an icon always matches at step 2 — which is why a task called Piano was getting a goblet. Letting the label win outright would be worse: naming a task "Morning run" while picking the book icon should still get a book, because that icon was a deliberate choice. The label only fills a gap the icon list has no way to express.
+
+To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key it is picked up automatically; if not, it becomes label-addressable with no further wiring.
 
 The loop is facet opacity, out of phase, nothing more. No glow, no filter, no transform — those read as the effects this theme bans. `prefers-reduced-motion` stops it dead at full opacity.
 

@@ -364,6 +364,7 @@ function facetFill(s) {
 
 /* --- authored subjects ------------------------------------------------- */
 
+/** Facets fanned from a centre — a faceted disc. */
 function ringFacets(cx, cy, r, n, inner, rot = -Math.PI / 2) {
   const out = [];
   for (let i = 0; i < n; i++) {
@@ -372,6 +373,20 @@ function ringFacets(cx, cy, r, n, inner, rot = -Math.PI / 2) {
     const bx = cx + Math.cos(b) * r, by = cy + Math.sin(b) * r;
     const ix = cx + Math.cos(a) * inner, iy = cy + Math.sin(a) * inner;
     out.push(f(litBy((ax + bx + ix) / 3, (ay + by + iy) / 3), cx, cy, ax, ay, bx, by));
+  }
+  return out;
+}
+
+/** A faceted band between two radii. The hole is a facet dark enough to read
+    as the page showing through, since a polygon cannot be cut. */
+function annulus(cx, cy, ro, ri, n, rot = -Math.PI / 2) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * Math.PI * 2, b = rot + ((i + 1) / n) * Math.PI * 2;
+    const p = (ang, r) => [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
+    const [ax, ay] = p(a, ro), [bx, by] = p(b, ro);
+    const [dx, dy] = p(b, ri), [ex, ey] = p(a, ri);
+    out.push(f(litBy((ax + bx) / 2, (ay + by) / 2), ax, ay, bx, by, dx, dy, ex, ey));
   }
   return out;
 }
@@ -445,6 +460,74 @@ const SUBJECTS = {
     f(.50, 50, 10, 67, 44, 60, 74, 40, 74, 33, 44),  // outer
     f(.78, 50, 23, 61, 48, 56, 71, 44, 71, 39, 48),  // mid
     f(1.0, 50, 40, 58, 58, 50, 71, 42, 58)           // core
+  ],
+
+  /* A keyboard, not a whole instrument — the keys are the part that reads as
+     "piano" instantly at any size, and they are all straight edges. */
+  piano: () => {
+    const out = [
+      f(.30, 13, 27, 87, 27, 89, 40, 11, 40),        // fallboard
+      f(.52, 11, 40, 89, 40, 93, 48, 7, 48)          // key bed, seen from above
+    ];
+    const n = 8, x0 = 7, x1 = 93, w = (x1 - x0) / n;
+    for (let i = 0; i < n; i++) {
+      const l = x0 + i * w + 0.7, r = x0 + (i + 1) * w - 0.7;
+      out.push(f(i % 2 ? .90 : .98, l, 48, r, 48, r, 75, l, 75));
+    }
+    for (const i of [0, 1, 3, 4, 5]) {              // the 2-then-3 black-key group
+      const c = x0 + (i + 1) * w, b = w * 0.33;
+      out.push(f(.10, c - b, 48, c + b, 48, c + b * 0.8, 65, c - b * 0.8, 65));
+    }
+    out.push(f(.22, 7, 75, 93, 75, 93, 82, 7, 82));  // front lip
+    return out;
+  },
+
+  shield: () => [
+    f(.86, 50, 9, 82, 21, 79, 52, 50, 81),           // lit half
+    f(.52, 50, 9, 18, 21, 21, 52, 50, 81),           // shaded half
+    f(1.0, 50, 29, 67, 40, 50, 53, 33, 40)           // charge
+  ],
+
+  goblet: () => [
+    f(.84, 30, 20, 70, 20, 62, 45, 38, 45),          // bowl
+    f(.54, 50, 20, 70, 20, 62, 45, 50, 45),          // bowl, shaded side
+    f(1.0, 33, 25, 67, 25, 65, 31, 35, 31),          // the wine
+    f(.60, 46, 45, 54, 45, 54, 72, 46, 72),          // stem
+    f(.42, 34, 72, 66, 72, 71, 81, 29, 81)           // foot
+  ],
+
+  bowl: () => [
+    f(.92, 16, 43, 84, 43, 80, 51, 20, 51),          // rim
+    f(.62, 20, 51, 50, 51, 50, 77, 33, 73),          // body
+    f(.40, 50, 51, 80, 51, 67, 73, 50, 77),          // body, shaded side
+    f(.28, 41, 76, 59, 76, 57, 83, 43, 83),          // base
+    f(.80, 43, 31, 47, 20, 51, 33),                  // steam
+    f(.66, 55, 28, 59, 17, 63, 30)
+  ],
+
+  /* A feather: barbs stepped along a spine, spread by a sine so the vane is
+     full in the middle and tapers at both ends. */
+  quill: () => {
+    const out = [];
+    const ax = 79, ay = 17, bx = 27, by = 69, n = 7;
+    for (let i = 0; i < n; i++) {
+      const t = i / n, u = (i + 1) / n;
+      const px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
+      const qx = ax + (bx - ax) * u, qy = ay + (by - ay) * u;
+      const s = 23 * Math.sin(Math.PI * (0.18 + t * 0.78));
+      out.push(f(.90 - t * .28, px, py, qx, qy, px - s * .74, py - s * .56));
+      out.push(f(.58 - t * .16, px, py, qx, qy, px + s * .56, py + s * .74));
+    }
+    out.push(f(1.0, 27, 69, 33, 65, 15, 85));        // nib
+    return out;
+  },
+
+  key: () => [
+    ...annulus(32, 30, 18, 9, 8),                    // bow
+    f(.04, 32, 21, 41, 30, 32, 39, 23, 30),          // its hole
+    f(.62, 29, 46, 39, 46, 39, 86, 29, 86),          // shaft
+    f(.78, 39, 66, 51, 66, 51, 72, 39, 72),          // wards
+    f(.50, 39, 78, 48, 78, 48, 84, 39, 84)
   ]
 };
 
@@ -488,7 +571,29 @@ function gemFacets(id) {
   return out;
 }
 
-const facetsFor = (task) => (SUBJECTS[task.icon] || (() => gemFacets(task.id)))();
+/* Subjects the icon picker cannot express — there is no `piano` icon. Longest
+   first, so a longer name is never shadowed by a shorter one. */
+const EXTRA_SUBJECTS = Object.keys(SUBJECTS)
+  .filter((k) => !ICONS[k])
+  .sort((a, b) => b.length - a.length);
+
+/**
+ * Label first, but **only** for subjects the icon list has no key for, then the
+ * icon, then generated.
+ *
+ * Every icon key is authored, so an icon always matches — which is why a task
+ * called Piano was getting a goblet. The label pass fills that gap without
+ * overriding an icon the user deliberately chose: naming a task "Morning run"
+ * while picking the book icon still gets a book.
+ */
+function subjectFor(task) {
+  const label = String(task.label || '');
+  const extra = EXTRA_SUBJECTS.find((w) => new RegExp(`\\b${w}`, 'i').test(label));
+  if (extra) return SUBJECTS[extra];
+  return SUBJECTS[task.icon] || null;
+}
+
+const facetsFor = (task) => (subjectFor(task) || (() => gemFacets(task.id)))();
 
 function polyHTML(task) {
   const facets = facetsFor(task);

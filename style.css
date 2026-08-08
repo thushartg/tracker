@@ -120,21 +120,11 @@ a { color: var(--parchment); text-decoration: none; }
 
 .stage { position: relative; }
 
+/* One layer. No card, no surface, no rule beneath the art — the illustration
+   sits directly on the page and the bar reads as part of it. */
 .piece {
   position: relative;
-  background: var(--iron);
-  border: var(--hair);
-  border-radius: var(--r);
-  padding: var(--s5);
-  overflow: hidden;
-}
-
-.piece::before {
-  content: "";
-  position: absolute; inset: 0 auto 0 0;
-  width: 2px;
-  background: var(--accent);
-  opacity: .85;
+  padding: 0;
 }
 
 /* The art carries the page, so give it room and a fixed square to sit in —
@@ -161,8 +151,7 @@ a { color: var(--parchment); text-decoration: none; }
 
 .piece__bar {
   display: flex; align-items: center; gap: var(--s3);
-  padding-top: var(--s4);
-  border-top: var(--hair);
+  padding-top: var(--s2);
 }
 
 .piece__nav {
@@ -234,12 +223,10 @@ a { color: var(--parchment); text-decoration: none; }
 
 /* ------------------------------------------------------------ empty/done */
 
+/* Same single layer as the piece it stands in for. */
 .state {
-  border: var(--hair);
-  border-radius: var(--r);
   padding: var(--s7) var(--s5);
   text-align: center;
-  background: var(--iron);
 }
 .state .icon { margin: 0 auto var(--s4); width: 2rem; height: 2rem; color: var(--dust); }
 .state__title {
