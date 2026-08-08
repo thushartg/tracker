@@ -176,7 +176,9 @@ a { color: var(--parchment); text-decoration: none; }
 .piece__nav:hover:not([disabled]) { color: var(--parchment); border-color: var(--accent); }
 .piece__nav[disabled] { opacity: .3; cursor: default; }
 
-.piece__id { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s3); }
+/* Sized to its content, not stretched — stretching pushed the two arrows to
+   opposite ends of the column with a gap of nothing between them. */
+.piece__id { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s3); }
 
 .piece__n {
   flex: none;

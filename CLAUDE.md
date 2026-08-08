@@ -112,13 +112,9 @@ Every write sends the current `sha`. No exceptions.
 
 ### The sync bar when collapsed
 
-Collapsed, the bar disappears **completely** on Home — no status line, no handle, no rule.
+Collapsed, the bar disappears **completely** on Home — no status line, no handle, no rule. Unconditionally.
 
-It is not unconditional. `applySyncCollapse` keeps it hidden only while nothing is wrong; `failed`, `offline`, and `local only` override the preference and bring the bar back on their own. **A failed flush must never be silent.** `setStatus` re-runs the check on every status change, or a failure would land in a bar that is already hidden.
-
-`pending` and `syncing` are deliberately *not* trouble. They are ordinary, and treating them as trouble would pop the bar open for thirty seconds after every completion — which is the thing this hides.
-
-The **Tasks page never fully hides it**, so the Show handle always exists somewhere. Do not extend `sync--gone` to that page without first giving the bar another way back.
+The **Tasks page never hides it**, so the Show handle always exists somewhere. Do not extend `sync--gone` to that page without first giving the bar another way back.
 
 ---
 
