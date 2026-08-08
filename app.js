@@ -316,72 +316,120 @@ function resolveDay() {
 
 const windowText = (t) => `${t.window.start}–${t.window.end}`;
 
-function heroHTML(task, mode, m) {
-  const meta = mode === 'open'
-    ? `${windowText(task)} · ends in <b>${fmtDuration(endsIn(task, m))}</b>`
-    : `${windowText(task)} · in <b>${fmtDuration(startsIn(task, m))}</b>`;
-  return `
-    <article class="card" data-house="${task.color}" data-id="${esc(task.id)}"
-             tabindex="0" role="button" aria-label="${esc(task.label)} — double-click to complete">
-      <div class="card__head">
-        ${icon(task.icon, 'icon--hero')}
-        <span class="card__eyebrow">${mode === 'open' ? 'Now' : 'Next'}</span>
-      </div>
-      <h2 class="card__label">${esc(task.label)}</h2>
-      <p class="card__meta">${meta}</p>
-      <p class="card__hint">Double-click to complete</p>
-    </article>`;
-}
+/**
+ * Summits of the twelve mountains on the chart, as percentages of its viewBox.
+ * The range is fixed — the land does not rearrange itself when tasks change.
+ * Tasks sort by start time and take peaks in order, so scrolling south is
+ * moving later through the day. Generated with the chart; keep the two in step.
+ */
+const PEAKS = [
+  { x: 57.35, y: 20.08 }, { x: 62.92, y: 22.81 }, { x: 38.53, y: 28.71 },
+  { x: 64.58, y: 32.76 }, { x: 35.12, y: 36.01 }, { x: 62.90, y: 39.33 },
+  { x: 41.34, y: 47.44 }, { x: 58.41, y: 50.81 }, { x: 40.92, y: 57.38 },
+  { x: 62.55, y: 61.89 }, { x: 53.34, y: 66.68 }, { x: 60.63, y: 72.25 }
+];
 
-function rowHTML(task, kind, m) {
-  const meta = kind === 'missed' ? 'missed'
-    : kind === 'open' ? `ends in ${fmtDuration(endsIn(task, m))}`
+const FLAG = `<svg class="pin__mark" viewBox="0 0 22 30" fill="none" aria-hidden="true">
+    <path class="pin__staff" d="M5 29V3"/><path class="pin__flag" d="M5 4h13l-3.4 4.4L18 13H5Z"/></svg>`;
+
+function pinHTML(task, kind, tier, peak, m) {
+  const meta = kind === 'open' ? `ends in ${fmtDuration(endsIn(task, m))}`
+    : kind === 'missed' ? 'missed'
     : `in ${fmtDuration(startsIn(task, m))}`;
+  const plate = tier === 'hero'
+    ? `<span class="pin__plate"><span class="pin__label">${esc(task.label)}</span>
+         <span class="pin__time mono">${windowText(task)} · ${meta}</span></span>`
+    : tier === 'near'
+      ? `<span class="pin__plate pin__plate--slim">${esc(task.label)}</span>`
+      : `<span class="pin__plate pin__plate--hidden">${esc(task.label)}</span>`;
   return `
-    <li class="row row--${kind}" data-house="${task.color}" data-id="${esc(task.id)}"
-        tabindex="0" role="button" aria-label="${esc(task.label)} — double-click to log">
-      ${icon(task.icon)}
-      <span class="row__label">${esc(task.label)}</span>
-      <span class="row__meta">${windowText(task)} · ${meta}</span>
-    </li>`;
+    <button class="pin pin--${kind} pin--${tier}${peak.x > 50 ? ' pin--flip' : ''}"
+            data-house="${task.color}" data-id="${esc(task.id)}"
+            style="left:${peak.x}%;top:${peak.y}%"
+            aria-label="${esc(task.label)}, ${windowText(task)}, ${meta} — double-click to complete">
+      ${FLAG}${plate}</button>`;
 }
 
 function renderHome() {
-  const stage = $('#stage'), list = $('#secondary'), m = nowMinutes();
-  const d = new Date();
-  $('#dateline').textContent = d.toLocaleDateString(undefined,
+  const pins = $('#pins'), note = $('#chartNote'), m = nowMinutes();
+  $('#dateline').textContent = new Date().toLocaleDateString(undefined,
     { weekday: 'long', day: 'numeric', month: 'long' });
 
-  if (!store.tasks.length) {
-    stage.innerHTML = `<div class="state">${icon('quill')}
-      <p class="state__title">No tasks yet</p>
-      <p class="state__body">Write some on the <a href="tasks.html">Tasks</a> page.</p></div>`;
-    list.innerHTML = '';
-    return;
+  const { hero, dimmed, anyToday } = resolveDay();
+
+  /* Same resolution order as ever — the chart is only a new way to show it. */
+  const rank = new Map();
+  if (hero) rank.set(hero.id, 'hero');
+  dimmed.forEach(([t]) => rank.set(t.id, 'near'));
+
+  const wd = isoWeekday(), done = store.doneToday();
+  const today = store.tasks
+    .filter((t) => scheduledToday(t, wd) && !(done[t.id] && done[t.id].done))
+    .sort((a, b) => toMinutes(a.window.start) - toMinutes(b.window.start))
+    .slice(0, PEAKS.length);
+
+  const kindOf = (t) => inWindow(t, m) ? 'open'
+    : toMinutes(t.window.start) > m ? 'upcoming' : 'missed';
+
+  pins.innerHTML = today
+    .map((t, i) => pinHTML(t, kindOf(t), rank.get(t.id) || 'far', PEAKS[i], m))
+    .join('');
+
+  note.innerHTML = !store.tasks.length
+    ? `<p class="chart__state">No tasks yet. Write some on the <a href="tasks.html">Tasks</a> page.</p>`
+    : !anyToday
+      ? `<p class="chart__state">${done && Object.keys(done).length
+          ? 'All kept. Nothing left on the chart today.'
+          : 'Nothing is scheduled for this weekday.'}</p>`
+      : '';
+
+  requestAnimationFrame(declutter);
+}
+
+/**
+ * Nothing may sit on top of anything else: map lettering yields to a task
+ * plate, then plates push each other apart. Flags never leave their summits.
+ */
+function declutter() {
+  const plates = [...document.querySelectorAll('.pin')]
+    .filter((p) => !p.querySelector('.pin__plate--hidden'));
+  const lettering = [...document.querySelectorAll('.map__region, .map__sealabel')];
+  const R = (el) => el.getBoundingClientRect();
+  const hits = (a, b) => !(a.right < b.left || a.left > b.right ||
+                           a.bottom < b.top || a.top > b.bottom);
+
+  plates.forEach((p) => { p.dataset.dy = 0; p.style.setProperty('--dy', '0px'); });
+  lettering.forEach((l) => l.style.removeProperty('opacity'));
+
+  for (let pass = 0; pass < 30; pass++) {
+    let moved = false;
+    for (let i = 0; i < plates.length; i++) {
+      for (let j = i + 1; j < plates.length; j++) {
+        const a = R(plates[i]), b = R(plates[j]);
+        if (!hits(a, b)) continue;
+        const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) + 4;
+        const up = a.top <= b.top ? plates[i] : plates[j];
+        const dn = up === plates[i] ? plates[j] : plates[i];
+        for (const [el, d] of [[up, -overlap / 2], [dn, overlap / 2]]) {
+          const next = Math.max(-64, Math.min(64, (+el.dataset.dy) + d));
+          el.dataset.dy = next;
+          el.style.setProperty('--dy', `${next}px`);
+        }
+        moved = true;
+      }
+    }
+    if (!moved) break;
   }
-
-  const { hero, mode, dimmed, anyToday } = resolveDay();
-
-  if (!hero) {
-    delete stage.dataset.house;
-    stage.innerHTML = `<div class="state">${icon(anyToday ? 'flame' : 'moon')}
-      <p class="state__title">${anyToday ? 'All done' : 'Nothing today'}</p>
-      <p class="state__body">${anyToday
-        ? 'Every window closed and kept.'
-        : 'No task is scheduled for this weekday.'}</p></div>`;
-  } else {
-    stage.dataset.house = hero.color;
-    stage.innerHTML = heroHTML(hero, mode, m);
+  for (const l of lettering) {
+    if (plates.some((p) => hits(R(l), R(p)))) l.style.opacity = '.1';
   }
-
-  list.innerHTML = dimmed.map(([t, kind]) => rowHTML(t, kind, m)).join('');
 }
 
 /* ------------------------------------------------------------- the burn  */
 
 let animating = false;
 
-function complete(el, id, grand) {
+function complete(el, id) {
   if (animating) return;
 
   store.complete(id);                       // 1. state first, always
@@ -391,17 +439,24 @@ function complete(el, id, grand) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   animating = true;
 
-  if (!grand || reduced) {                  // fade, no fire
+  if (reduced) {                            // fade the pin, no fire
     el.classList.add('fade-out');
     setTimeout(finish, 360);
     return;
   }
 
-  $('#stage').insertAdjacentHTML('beforeend', pyreHTML());
+  /* The pyre is planted on the summit the task stood on, so the fire takes
+     that peak rather than the whole chart. */
+  const pyre = document.createElement('div');
+  pyre.className = 'pyre-anchor';
+  pyre.style.left = el.style.left;
+  pyre.style.top = el.style.top;
+  pyre.innerHTML = pyreHTML();
+  $('#pins').appendChild(pyre);
   el.classList.add('is-burning');
-  setTimeout(finish, 1900);          // card goes first; the last tongues outlive it
+  setTimeout(finish, 1900);          // the pin goes first; the last tongues outlive it
 
-  function finish() { animating = false; renderHome(); }
+  function finish() { animating = false; pyre.remove(); renderHome(); }
 }
 
 const checkHTML = () => `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -456,21 +511,61 @@ const pyreHTML = () => `
 </div>
 <p class="dracarys" aria-hidden="true">Dracarys</p>`;
 
+function centreOnHero(behaviour) {
+  const chart = $('#chart'), hero = $('.pin--hero');
+  if (!chart || !hero) return;
+  const c = chart.getBoundingClientRect(), h = hero.getBoundingClientRect();
+  chart.scrollTo({
+    left: chart.scrollLeft + (h.left + h.width / 2) - (c.left + c.width / 2),
+    top:  chart.scrollTop  + (h.top  + h.height / 2) - (c.top + c.height / 2),
+    behavior: behaviour
+  });
+}
+
 function wireHome() {
-  const target = (e) => e.target.closest('.card, .row');
+  const chart = $('#chart');
+
   document.addEventListener('dblclick', (e) => {
-    const el = target(e);
-    if (el) complete(el, el.dataset.id, el.classList.contains('card'));
+    const el = e.target.closest('.pin');
+    if (el) complete(el, el.dataset.id);
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const el = e.target.closest('.card, .row');
+    const el = e.target.closest('.pin');
     if (!el) return;
     e.preventDefault();
-    complete(el, el.dataset.id, el.classList.contains('card'));
+    complete(el, el.dataset.id);
   });
+
+  /* drag to pan; a press that starts on a pin is left alone */
+  let down = false, sx = 0, sy = 0, sl = 0, st = 0;
+  chart.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.pin')) return;
+    down = true; sx = e.clientX; sy = e.clientY;
+    sl = chart.scrollLeft; st = chart.scrollTop;
+    chart.setPointerCapture(e.pointerId);
+    chart.classList.add('is-dragging');
+  });
+  chart.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    chart.scrollLeft = sl - (e.clientX - sx);
+    chart.scrollTop  = st - (e.clientY - sy);
+  });
+  for (const ev of ['pointerup', 'pointercancel']) {
+    chart.addEventListener(ev, () => { down = false; chart.classList.remove('is-dragging'); });
+  }
+
+  let resizeTimer = null;
+  addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(declutter, 150);
+  });
+
+  addEventListener('load', () => setTimeout(() => centreOnHero('smooth'), 350));
   setInterval(() => { if (!animating) renderHome(); }, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !animating) renderHome(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !animating) renderHome();
+  });
 }
 
 /* ================================================================= tasks */
