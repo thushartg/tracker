@@ -1174,6 +1174,9 @@ function setStatus(text) {
   status = text;
   const node = $('.sync__status');
   if (node) node.textContent = text;
+  /* The hidden bar is conditional on the status, so it has to be re-evaluated
+     whenever the status moves — otherwise a failure lands in a hidden bar. */
+  applySyncCollapse();
 }
 
 /* Collapsed by choice, remembered. The status line stays visible either way —
@@ -1185,6 +1188,15 @@ function applySyncCollapse() {
   if (!foot) return;
   const hidden = syncHidden();
   foot.classList.toggle('sync--collapsed', hidden);
+
+  /* On Home, collapsed means gone rather than a stub — but trouble overrides it
+     and brings the bar back on its own, because a failed flush must never be
+     silent. Only trouble does: 'pending' and 'syncing' are ordinary and would
+     otherwise pop the bar open for thirty seconds after every completion. The
+     Tasks page keeps its handle either way, so the bar is always reopenable. */
+  const troubled = /failed|offline|local only/.test(status);
+  foot.classList.toggle('sync--gone', hidden && page === 'home' && !troubled);
+
   const btn = $('#syncToggle');
   if (btn) {
     btn.setAttribute('aria-expanded', String(!hidden));

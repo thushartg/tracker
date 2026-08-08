@@ -110,6 +110,16 @@ Every write sends the current `sha`. No exceptions.
 - Never commit on every interaction. The commit log should stay readable.
 - Offline: everything still works, flush retries when back online.
 
+### The sync bar when collapsed
+
+Collapsed, the bar disappears **completely** on Home — no status line, no handle, no rule.
+
+It is not unconditional. `applySyncCollapse` keeps it hidden only while nothing is wrong; `failed`, `offline`, and `local only` override the preference and bring the bar back on their own. **A failed flush must never be silent.** `setStatus` re-runs the check on every status change, or a failure would land in a bar that is already hidden.
+
+`pending` and `syncing` are deliberately *not* trouble. They are ordinary, and treating them as trouble would pop the bar open for thirty seconds after every completion — which is the thing this hides.
+
+The **Tasks page never fully hides it**, so the Show handle always exists somewhere. Do not extend `sync--gone` to that page without first giving the bar another way back.
+
 ---
 
 ## Data shapes
@@ -180,6 +190,8 @@ Show **one** task, never a list. The dimmed secondary rows are gone; arrows repl
 ### The piece
 
 The task fills the page as a low-poly illustration — flat triangular facets shaded off its house accent — with its name, number and window on a bar beneath, and a round arrow either side.
+
+**Left, not centred.** Home drops the centred column and runs down the page's left edge, in line with the masthead title — the date, the illustration, and the arrow bar all share that edge. Only Home; the Tasks page stays centred.
 
 **One layer.** The illustration sits directly on `--ash`. No card, no `--iron` surface, no border, no accent bar down the side, no rule under the art. The empty and done states are flat for the same reason — they stand in the same slot, and a bordered box there would read as a bug. The only rule on the page is the short vertical one between the number and the name.
 
