@@ -175,7 +175,33 @@ Resolution order:
 4. **All done for today** → explicit done state. Never a blank screen.
 5. **Missed windows** → dimmed secondary row so they can still be logged late. Never the hero.
 
-Show **one** task as the hero, plus at most **two** dimmed. More than that and this is just the Tasks page with worse spacing.
+Show **one** task, never a list. The dimmed secondary rows are gone; arrows replace them.
+
+### The piece
+
+The task fills the page as a low-poly illustration — flat triangular facets shaded off its house accent — with its name, number and window on a bar beneath, and a round arrow either side.
+
+- **Arrows page the same ranking the hero came from.** `resolveDay` returns `order`, the resolution order continued past the hero. Paging forward walks down it, so the arrows can never contradict the answer the page opened on. Position `1/n` is always the hero.
+- The list **wraps at both ends**. It is a loop, not a scroll.
+- `stageIx` is **clamped, never reset**. The 60-second re-render must not yank the page back to the hero mid-browse.
+- Left/Right arrow keys do the same thing as the buttons.
+- **Nothing scheduled today** → the arrows fall back to walking every task rather than becoming a dead end, and each is marked *not today* in italic. `stageList()` returns the scope so the page can say which it is showing.
+- Double-clicking the art still completes. Double-clicking an **arrow** must not — it would complete the task the arrow just moved away from.
+
+### The artwork
+
+Original. Facets are `{ s, p }` — a shade in `0..1` and a flat list of `x,y` in a 100×100 box — shaded by one light from the upper left so every subject agrees. `0` is the accent sunk into `--ash`, `1` is the accent lifted toward `--parchment`; fills are `color-mix` on `var(--accent)`, so a task's house colour drives the whole illustration.
+
+Two sources, in `app.js`:
+
+- `SUBJECTS` — hand-authored subjects per icon key. Currently `sun`, `moon`, `run`, `book`, `blade`, `tower`, `flame`.
+- `gemFacets(id)` — a generated faceted form for every other key, seeded from the task id. Star-shaped around its centre by construction (core plus two rings), so facets tile without overlapping whatever the seed, and the same id always gives the same form.
+
+`facetsFor()` picks authored art when it exists and generates otherwise, so **no task is ever art-less**. Adding a subject to `SUBJECTS` is the only step needed to promote one.
+
+The loop is facet opacity, out of phase, nothing more. No glow, no filter, no transform — those read as the effects this theme bans. `prefers-reduced-motion` stops it dead at full opacity.
+
+**No borrowed art, ever.** The style is common to low-poly illustration; the shapes here are authored from scratch. Do not trace, import, or adapt an existing illustration — see Legal.
 
 ### Completion
 
@@ -297,6 +323,8 @@ Current artwork:
 | Asset | Source | Rights |
 |---|---|---|
 | Task icons (`ICONS` in `app.js`) | original | — |
+| Low-poly subjects (`SUBJECTS` in `app.js`) | original — facet coordinates authored by hand; nothing traced from or adapted out of any existing illustration | — |
+| Generated forms (`gemFacets` in `app.js`) | original — computed from the task id | — |
 
 The site carries no borrowed text either — the one invented word it used has been removed along with the fire. That was a design decision, not a legal one: the word was always fine to use, since a single invented word is not copyrightable and this rule bars art, screenshots, logos, and sigils, not vocabulary.
 

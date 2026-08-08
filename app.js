@@ -341,6 +341,169 @@ async function pull() {
 document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 window.addEventListener('online', flush);
 
+/* ============================================================== low poly */
+
+/* Original artwork. Flat triangular facets shaded off the task's house accent,
+   in the manner of low-poly illustration — a style, not a copy of any picture.
+   Nothing here is traced.
+
+   A facet is { s, p }: a shade in 0..1 and a flat list of x,y in a 100x100 box.
+   0 is the accent sunk into --ash, 1 is the accent lifted toward --parchment. */
+
+const f = (s, ...p) => ({ s, p });
+
+/* Light from the upper left, so shading stays consistent across every subject. */
+const litBy = (x, y) => Math.max(0, Math.min(1, 0.58 - ((x - 50) / 100 + (y - 50) / 100)));
+
+function facetFill(s) {
+  const c = Math.max(0, Math.min(1, s));
+  return c <= 0.5
+    ? `color-mix(in srgb, var(--accent) ${Math.round(22 + c * 156)}%, var(--ash))`
+    : `color-mix(in srgb, var(--accent) ${Math.round(100 - (c - 0.5) * 112)}%, var(--parchment))`;
+}
+
+/* --- authored subjects ------------------------------------------------- */
+
+function ringFacets(cx, cy, r, n, inner, rot = -Math.PI / 2) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * Math.PI * 2, b = rot + ((i + 1) / n) * Math.PI * 2;
+    const ax = cx + Math.cos(a) * r, ay = cy + Math.sin(a) * r;
+    const bx = cx + Math.cos(b) * r, by = cy + Math.sin(b) * r;
+    const ix = cx + Math.cos(a) * inner, iy = cy + Math.sin(a) * inner;
+    out.push(f(litBy((ax + bx + ix) / 3, (ay + by + iy) / 3), cx, cy, ax, ay, bx, by));
+  }
+  return out;
+}
+
+const SUBJECTS = {
+  sun: () => {
+    const core = ringFacets(50, 50, 22, 9, 22);
+    const rays = [];
+    for (let i = 0; i < 9; i++) {
+      const a = -Math.PI / 2 + (i / 9) * Math.PI * 2, w = 0.19;
+      const p = (ang, r) => [50 + Math.cos(ang) * r, 50 + Math.sin(ang) * r];
+      const [x1, y1] = p(a - w, 22), [x2, y2] = p(a + w, 22), [x3, y3] = p(a, 41);
+      rays.push(f(litBy(x3, y3) * 0.9 + 0.08, x1, y1, x2, y2, x3, y3));
+    }
+    return [...rays, ...core];
+  },
+
+  moon: () => {
+    const out = [], n = 11;
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI * 0.62 + (i / n) * Math.PI * 1.24;
+      const b = -Math.PI * 0.62 + ((i + 1) / n) * Math.PI * 1.24;
+      const o = (ang) => [50 + Math.cos(ang) * 34, 50 + Math.sin(ang) * 34];
+      const t = (ang) => [58 + Math.cos(ang) * 26, 50 + Math.sin(ang) * 27];
+      const [ax, ay] = o(a), [bx, by] = o(b), [cx2, cy2] = t(a), [dx, dy] = t(b);
+      out.push(f(litBy(ax, ay), ax, ay, bx, by, dx, dy, cx2, cy2));
+    }
+    return out;
+  },
+
+  run: () => [
+    f(.88, 46, 13, 57, 11, 58, 22, 47, 25),          // head
+    f(.62, 46, 25, 59, 27, 54, 50, 42, 46),          // torso
+    f(.40, 46, 28, 34, 41, 29, 36, 42, 25),          // trailing arm
+    f(.74, 57, 28, 71, 35, 73, 30, 58, 24),          // leading arm
+    f(.52, 54, 48, 67, 57, 60, 63, 49, 54),          // front thigh
+    f(.68, 67, 57, 73, 72, 66, 75, 59, 61),          // front shin
+    f(.36, 44, 46, 40, 62, 33, 60, 38, 44),          // back thigh
+    f(.50, 40, 62, 30, 77, 24, 72, 34, 60),          // back shin
+    f(.82, 73, 72, 81, 77, 78, 81, 66, 76),          // front foot
+    f(.30, 30, 77, 22, 83, 19, 78, 26, 72)           // back foot
+  ],
+
+  book: () => [
+    f(.95, 24, 52, 49, 45, 49, 51, 22, 58),          // left leaf
+    f(.72, 51, 45, 76, 52, 78, 58, 51, 51),          // right leaf
+    f(.66, 22, 58, 49, 51, 49, 71, 20, 73),          // left page
+    f(.86, 51, 51, 78, 58, 80, 73, 51, 71),          // right page
+    f(.42, 20, 73, 49, 71, 49, 78, 18, 80),          // left cover
+    f(.54, 51, 71, 80, 73, 82, 80, 51, 78),          // right cover
+    f(.32, 49, 45, 51, 45, 51, 78, 49, 78)           // spine
+  ],
+
+  blade: () => [
+    f(.94, 50, 8, 57, 27, 53, 60, 50, 60),           // lit edge
+    f(.58, 50, 8, 43, 27, 47, 60, 50, 60),           // shaded edge
+    f(.40, 35, 60, 65, 60, 64, 67, 36, 67),          // guard
+    f(.56, 46, 67, 54, 67, 53, 85, 47, 85),          // grip
+    f(.78, 44, 85, 56, 85, 52, 92, 48, 92)           // pommel
+  ],
+
+  tower: () => [
+    f(.90, 50, 10, 71, 34, 29, 34),                  // roof
+    f(.64, 33, 34, 50, 34, 50, 82, 35, 82),          // lit wall
+    f(.44, 50, 34, 67, 34, 65, 82, 50, 82),          // shaded wall
+    f(.80, 31, 39, 69, 39, 69, 45, 31, 45),          // band
+    f(.26, 44, 60, 56, 60, 56, 82, 44, 82)           // door
+  ],
+
+  flame: () => [
+    f(.50, 50, 10, 67, 44, 60, 74, 40, 74, 33, 44),  // outer
+    f(.78, 50, 23, 61, 48, 56, 71, 44, 71, 39, 48),  // mid
+    f(1.0, 50, 40, 58, 58, 50, 71, 42, 58)           // core
+  ]
+};
+
+/* --- generated fallback ------------------------------------------------ */
+
+function seedOf(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const rngOf = (seed) => {
+  let s = seed || 1;
+  return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+};
+
+/**
+ * A faceted form for tasks with no authored subject. Star-shaped around its
+ * centre by construction — two rings plus a core — so the facets tile without
+ * ever overlapping, whatever the seed. Same id, same form, every time.
+ */
+function gemFacets(id) {
+  const r = rngOf(seedOf(id));
+  const n = 9, cx = 50, cy = 50;
+  const outer = [], inner = [];
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    const ro = 30 + r() * 13;
+    const ri = ro * (0.40 + r() * 0.18);
+    outer.push([cx + Math.cos(a) * ro, cy + Math.sin(a) * ro]);
+    inner.push([cx + Math.cos(a) * ri, cy + Math.sin(a) * ri]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const [ax, ay] = inner[i], [bx, by] = inner[j];
+    const [ox, oy] = outer[i], [px, py] = outer[j];
+    out.push(f(litBy((ax + bx + cx) / 3, (ay + by + cy) / 3) * .8 + .12, cx, cy, ax, ay, bx, by));
+    out.push(f(litBy((ax + ox + px) / 3, (ay + oy + py) / 3), ax, ay, ox, oy, px, py));
+    out.push(f(litBy((ax + bx + px) / 3, (ay + by + py) / 3) * .9, ax, ay, px, py, bx, by));
+  }
+  return out;
+}
+
+const facetsFor = (task) => (SUBJECTS[task.icon] || (() => gemFacets(task.id)))();
+
+function polyHTML(task) {
+  const facets = facetsFor(task);
+  const pts = (p) => {
+    const out = [];
+    for (let i = 0; i < p.length; i += 2) out.push(`${p[i].toFixed(1)},${p[i + 1].toFixed(1)}`);
+    return out.join(' ');
+  };
+  return `<svg class="poly" viewBox="0 0 100 100" role="img"
+               aria-label="${esc(task.label)}" preserveAspectRatio="xMidYMid meet">
+    ${facets.map((fc, i) => `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
+        style="animation-delay:${(i * 0.09).toFixed(2)}s"/>`).join('')}
+  </svg>`;
+}
+
 /* ================================================================== home */
 
 /**
@@ -370,78 +533,113 @@ function resolveDay() {
   if (open.length)          { hero = open[0];     mode = 'open'; }
   else if (upcoming.length) { hero = upcoming[0]; mode = 'upcoming'; }
 
-  const dimmed = [
-    ...open.slice(mode === 'open' ? 1 : 0).map((t) => [t, 'open']),
-    ...missed.map((t) => [t, 'missed']),
-    ...upcoming.slice(mode === 'upcoming' ? 1 : 0).map((t) => [t, 'upcoming'])
-  ].slice(0, 2);
+  /* The same ranking the hero came from, continued. Paging forward walks down
+     it, so the arrows never contradict the answer the page opened on. */
+  const order = [
+    ...(hero ? [hero] : []),
+    ...open.slice(mode === 'open' ? 1 : 0),
+    ...missed,
+    ...upcoming.slice(mode === 'upcoming' ? 1 : 0)
+  ];
 
-  return { hero, mode, dimmed, anyToday: scheduled.length > 0 };
+  return { hero, mode, order, anyScheduled: scheduled.length > 0 };
+}
+
+/**
+ * What the arrows walk.
+ *   'today' — outstanding tasks for this weekday, in resolution order.
+ *   'done'  — everything scheduled today is finished.
+ *   'all'   — nothing is scheduled today, so rather than a dead end the arrows
+ *             fall back to the whole list, marked as not being today's work.
+ */
+function stageList() {
+  const { order, anyScheduled } = resolveDay();
+  if (order.length) return { list: order, scope: 'today' };
+  if (anyScheduled) return { list: [], scope: 'done' };
+  return {
+    list: store.tasks.slice().sort((a, b) => toMinutes(a.window.start) - toMinutes(b.window.start)),
+    scope: 'all'
+  };
 }
 
 const windowText = (t) => `${t.window.start}–${t.window.end}`;
 
-function heroHTML(task, mode, m) {
-  const meta = mode === 'open'
-    ? `${windowText(task)} · ends in <b>${fmtDuration(endsIn(task, m))}</b>`
-    : `${windowText(task)} · in <b>${fmtDuration(startsIn(task, m))}</b>`;
+function taskMeta(task, m, wd) {
+  if (!scheduledToday(task, wd))                return `${windowText(task)} · not today`;
+  if (inWindow(task, m))                        return `${windowText(task)} · ends in ${fmtDuration(endsIn(task, m))}`;
+  if (toMinutes(task.window.start) > m)         return `${windowText(task)} · in ${fmtDuration(startsIn(task, m))}`;
+  return `${windowText(task)} · missed`;
+}
+
+function pieceHTML(task, m, wd, ix, total) {
+  const one = total < 2;
   return `
-    <article class="card" data-house="${task.color}" data-id="${esc(task.id)}"
-             tabindex="0" role="button" aria-label="${esc(task.label)} — double-click to complete">
-      <div class="card__head">
-        ${icon(task.icon, 'icon--hero')}
-        <span class="card__eyebrow">${mode === 'open' ? 'Now' : 'Next'}</span>
+    <article class="piece" data-house="${task.color}" data-id="${esc(task.id)}"
+             tabindex="0" role="button"
+             aria-label="${esc(task.label)} — double-click to complete">
+      <div class="piece__art">${polyHTML(task)}</div>
+      <div class="piece__bar">
+        <button type="button" class="piece__nav" data-step="-1"
+                aria-label="Previous task" ${one ? 'disabled' : ''}>&larr;</button>
+        <div class="piece__id">
+          <span class="piece__n mono">${ix + 1}<span class="piece__of">/${total}</span></span>
+          <span class="piece__rule" aria-hidden="true"></span>
+          <span class="piece__text">
+            <h2 class="piece__label">${esc(task.label)}</h2>
+            <p class="piece__meta mono">${taskMeta(task, m, wd)}</p>
+          </span>
+        </div>
+        <button type="button" class="piece__nav" data-step="1"
+                aria-label="Next task" ${one ? 'disabled' : ''}>&rarr;</button>
       </div>
-      <h2 class="card__label">${esc(task.label)}</h2>
-      <p class="card__meta">${meta}</p>
-      <p class="card__hint">Double-click to complete</p>
+      <p class="piece__hint">Double-click to complete</p>
     </article>`;
 }
 
-function rowHTML(task, kind, m) {
-  const meta = kind === 'missed' ? 'missed'
-    : kind === 'open' ? `ends in ${fmtDuration(endsIn(task, m))}`
-    : `in ${fmtDuration(startsIn(task, m))}`;
-  return `
-    <li class="row row--${kind}" data-house="${task.color}" data-id="${esc(task.id)}"
-        tabindex="0" role="button" aria-label="${esc(task.label)} — double-click to log">
-      ${icon(task.icon)}
-      <span class="row__label">${esc(task.label)}</span>
-      <span class="row__meta">${windowText(task)} · ${meta}</span>
-    </li>`;
-}
+/* Which task the arrows are parked on. Clamped, never reset, so a background
+   re-render does not yank the page back to the hero mid-browse. */
+let stageIx = 0;
 
 function renderHome() {
-  const stage = $('#stage'), list = $('#secondary'), m = nowMinutes();
+  const stage = $('#stage'), m = nowMinutes(), wd = isoWeekday();
   const d = new Date();
   $('#dateline').textContent = d.toLocaleDateString(undefined,
     { weekday: 'long', day: 'numeric', month: 'long' });
 
   renderKept();
 
-  if (!store.tasks.length) {
-    stage.innerHTML = `<div class="state">${icon('quill')}
-      <p class="state__title">No tasks yet</p>
-      <p class="state__body">Write some on the <a href="tasks.html">Tasks</a> page.</p></div>`;
-    list.innerHTML = '';
-    return;
-  }
-
-  const { hero, mode, dimmed, anyToday } = resolveDay();
-
-  if (!hero) {
+  const state = (ic, title, body) => {
     delete stage.dataset.house;
-    stage.innerHTML = `<div class="state">${icon(anyToday ? 'flame' : 'moon')}
-      <p class="state__title">${anyToday ? 'All done' : 'Nothing today'}</p>
-      <p class="state__body">${anyToday
-        ? 'Every window closed and kept.'
-        : 'No task is scheduled for this weekday.'}</p></div>`;
-  } else {
-    stage.dataset.house = hero.color;
-    stage.innerHTML = heroHTML(hero, mode, m);
+    stage.innerHTML = `<div class="state">${icon(ic)}
+      <p class="state__title">${title}</p>
+      <p class="state__body">${body}</p></div>`;
+  };
+
+  if (!store.tasks.length) {
+    return state('quill', 'No tasks yet',
+      'Write some on the <a href="tasks.html">Tasks</a> page.');
   }
 
-  list.innerHTML = dimmed.map(([t, kind]) => rowHTML(t, kind, m)).join('');
+  const { list, scope } = stageList();
+
+  if (scope === 'done') {
+    return state('flame', 'All done', 'Every window closed and kept.');
+  }
+
+  stageIx = ((stageIx % list.length) + list.length) % list.length;
+  const task = list[stageIx];
+
+  stage.dataset.house = task.color;
+  stage.dataset.scope = scope;
+  stage.innerHTML = pieceHTML(task, m, wd, stageIx, list.length);
+}
+
+/** Wraps at both ends — the list is a loop, not a scroll. */
+function stepStage(delta) {
+  const { list } = stageList();
+  if (list.length < 2) return;
+  stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
+  renderHome();
 }
 
 /* ------------------------------------------------------------ kept today */
@@ -499,10 +697,17 @@ const checkHTML = () => `<svg class="check" viewBox="0 0 24 24" fill="none" stro
   <path d="m4 12.6 5.2 5.4L20 5.6"/></svg>`;
 
 function wireHome() {
-  const target = (e) => e.target.closest('.card, .row');
+  /* An arrow is for paging. Double-clicking one must never complete the task
+     it just moved away from. */
   document.addEventListener('dblclick', (e) => {
-    const el = target(e);
+    if (e.target.closest('.piece__nav')) return;
+    const el = e.target.closest('.piece');
     if (el) complete(el, el.dataset.id);
+  });
+
+  document.addEventListener('click', (e) => {
+    const nav = e.target.closest('[data-step]');
+    if (nav && !animating) stepStage(+nav.dataset.step);
   });
 
   /* Only today's completions can be taken back. The box holds nothing else —
@@ -518,8 +723,11 @@ function wireHome() {
     renderHome();
   });
   document.addEventListener('keydown', (e) => {
+    if (animating) return;
+    if (e.key === 'ArrowLeft')  { stepStage(-1); return; }
+    if (e.key === 'ArrowRight') { stepStage(1);  return; }
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const el = e.target.closest('.card, .row');
+    const el = e.target.closest('.piece');
     if (!el) return;
     e.preventDefault();
     complete(el, el.dataset.id);
