@@ -765,8 +765,14 @@ function renderHome() {
   stage.innerHTML = pieceHTML(task, m, wd, stageIx, list.length);
 }
 
-const SHATTER_MS = 260;
-const FORM_MS = 460;
+/* Slightly shorter than the shatter actually runs, so the new piece starts
+   gathering while the last shards are still fading. A clean gap between the two
+   halves reads as a stutter; the overlap is what makes it feel continuous. */
+const SHATTER_MS = 520;
+/* Must outlast the slowest form: .58s plus a 12ms stagger over the busiest
+   subject (the 27-facet generated one) is .89s. Clearing the class early would
+   cut the last shards off mid-flight. */
+const FORM_MS = 980;
 
 /* Held while the piece is breaking up, so the 60-second refresh cannot render
    over a half-scattered polygon. */

@@ -190,9 +190,11 @@ a { color: var(--parchment); text-decoration: none; }
   animation: facet 5.2s ease-in-out infinite;
   animation-delay: calc(var(--i) * .09s);
 }
+/* Starts at full, because that is where `form` leaves off. Starting at .82 made
+   every facet dip the instant the transition handed back to the loop. */
 @keyframes facet {
-  0%, 100% { opacity: .82; }
-  50%      { opacity: 1; }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .82; }
 }
 
 /* Changing task: the piece breaks apart, then the next one gathers out of the
@@ -210,12 +212,14 @@ a { color: var(--parchment); text-decoration: none; }
 /* After .poly polygon, so these win the equal-specificity tie and replace the
    idle loop outright. The stagger is far tighter than the loop's. */
 .poly--shatter polygon {
-  animation: shatter .26s ease-in forwards;
-  animation-delay: calc(var(--i) * .008s);
+  /* Holds, then lets go — a shard that leaves at full speed reads as a cut. */
+  animation: shatter .44s cubic-bezier(.55, 0, .85, .35) forwards;
+  animation-delay: calc(var(--i) * .012s);
 }
 .poly--form polygon {
-  animation: form .40s cubic-bezier(.2, .9, .3, 1) backwards;
-  animation-delay: calc(var(--i) * .008s);
+  /* Arrives quickly, settles slowly. */
+  animation: form .58s cubic-bezier(.16, .84, .34, 1) backwards;
+  animation-delay: calc(var(--i) * .012s);
 }
 
 .piece__bar {
