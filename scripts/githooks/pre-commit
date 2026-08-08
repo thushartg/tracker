@@ -1,0 +1,27 @@
+#!/bin/sh
+# Keep the ?v= stamps in step with the files they point at.
+#
+# This runs on every commit rather than on demand, because a stamp that has to
+# be remembered is a stamp that will eventually be forgotten — and a forgotten
+# one fails silently, looking exactly like a deploy that did not take.
+#
+# Enable once per clone:
+#   git config core.hooksPath scripts/githooks
+set -eu
+
+./scripts/stamp-assets.sh
+
+# Only re-stage pages that were already part of this commit, so the hook never
+# quietly widens a deliberately narrow commit.
+for page in index.html tasks.html; do
+  if ! git diff --quiet --cached -- "$page" || ! git diff --quiet -- "$page"; then
+    git diff --quiet --cached -- "$page" || git add "$page"
+  fi
+done
+
+# If a page changed only because of the stamp and was not otherwise staged,
+# stage it anyway — an unstamped page in a commit that changes app.js or
+# style.css is the exact failure this hook exists to prevent.
+if ! git diff --quiet --cached -- app.js style.css; then
+  git add index.html tasks.html
+fi

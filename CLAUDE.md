@@ -29,6 +29,24 @@ If a feature isn't in this file, it isn't in scope. Ask before adding.
 - No build step if avoidable.
 - Two files: `index.html` (home), `tasks.html` (tasks). Shared `app.js`, `style.css`.
 
+### Asset versions
+
+Both pages reference their assets with a content hash — `app.js?v=b5e6ed79`, `style.css?v=eb77df83`.
+
+GitHub Pages sends `cache-control: max-age=600` on every file. Without the stamp, a browser reuses the `app.js` it already has and a deploy sits invisible for up to ten minutes, looking exactly like a failed push.
+
+The version is **derived, never typed**. `scripts/stamp-assets.sh` hashes each asset and rewrites the references; `scripts/githooks/pre-commit` runs it on every commit and re-stages the pages. Enable once per clone:
+
+```
+git config core.hooksPath scripts/githooks
+```
+
+Do not replace this with a hand-bumped number. A version that has to be remembered gets forgotten, and it fails silently.
+
+This does not make deploys instant — `index.html` is cached for ten minutes too, so a stale page will still ask for stale assets by their old names. What it fixes is the worse half: once the page is refetched, its assets are guaranteed fresh rather than served from cache. A normal reload is now enough; a hard reload is not needed.
+
+The hook is local to a clone. Committing from a machine that has not run the `git config` line above will produce an unstamped commit — check the pages if a deploy looks stale.
+
 ---
 
 ## Storage
