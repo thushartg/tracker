@@ -476,90 +476,33 @@ function renderKept() {
     </ul>`;
 }
 
-/* ------------------------------------------------------------- the burn  */
+/* --------------------------------------------------------- completion  */
 
+/* Guards the hand-off: the 60s interval and the visibilitychange re-render
+   must not repaint the page out from under the outgoing task. */
 let animating = false;
 
-function complete(el, id, grand) {
+function complete(el, id) {
   if (animating) return;
 
   store.complete(id);                       // 1. state first, always
   scheduleFlush();
   el.insertAdjacentHTML('beforeend', checkHTML());
 
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   animating = true;
-
-  if (!grand || reduced) {                  // fade, no fire
-    el.classList.add('fade-out');
-    setTimeout(finish, 360);
-    return;
-  }
-
-  $('#stage').insertAdjacentHTML('beforeend', pyreHTML());
-  el.classList.add('is-burning');
-  setTimeout(finish, 1900);          // card goes first; the last tongues outlive it
-
-  function finish() { animating = false; renderHome(); }
+  el.classList.add('fade-out');
+  setTimeout(() => { animating = false; renderHome(); }, 360);
 }
 
 const checkHTML = () => `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="m4 12.6 5.2 5.4L20 5.6"/></svg>`;
 
-/* Fire, faked the way fire is usually faked: two layers of small tongues at
-   different blurs and opacities, screen-blended so they glow instead of
-   occluding. Decorative only — the write already landed. */
-
-/* Slender tapering tongues; three silhouettes so the wave never looks stamped. */
-const FLAME_SHAPES = [
-  'M15 100C4 84 2 62 7 42 10 30 14 16 15 0c2 16 6 30 9 42 5 20 3 42-9 58Z',
-  'M13 100C3 82 3 58 10 40 14 29 19 15 22 2c-2 16 0 28 2 40 3 20 0 42-11 58Z',
-  'M17 100C28 82 27 58 20 40 16 29 11 15 8 2c2 16 0 28-2 40-3 20 0 42 11 58Z'
-];
-
-/* Deterministic jitter — varied but identical every burn, so it can be eyeballed. */
-const jitter = (i, salt) => {
-  const x = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
-  return x - Math.floor(x);
-};
-
-function flameLayer(cls, count, minH, maxH) {
-  const tongues = Array.from({ length: count }, (_, i) => {
-    const left  = (i / count) * 108 - 4 + jitter(i, 1) * 6;
-    const width = 7 + jitter(i, 2) * 7;
-    const tall  = minH + jitter(i, 3) * (maxH - minH);
-    const delay = i * 0.05 + jitter(i, 4) * 0.12;
-    const dur   = 0.72 + jitter(i, 5) * 0.34;
-    const shape = FLAME_SHAPES[i % FLAME_SHAPES.length];
-    return `<span class="tongue" style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%;
-      height:${tall.toFixed(1)}%;animation-delay:${delay.toFixed(2)}s;
-      animation-duration:${dur.toFixed(2)}s"><svg viewBox="0 0 30 100" preserveAspectRatio="none"
-      ><path d="${shape}" fill="url(#flameGrad)"/></svg></span>`;
-  }).join('');
-  return `<div class="pyre__layer ${cls}">${tongues}</div>`;
-}
-
-const pyreHTML = () => `
-<div class="pyre" aria-hidden="true">
-  <svg class="pyre__defs" aria-hidden="true"><defs>
-    <linearGradient id="flameGrad" x1="0" y1="1" x2="0" y2="0">
-      <stop class="flame-base" offset="0"/>
-      <stop class="flame-mid"  offset=".3"/>
-      <stop class="flame-hot"  offset=".62"/>
-      <stop class="flame-tip"  offset="1"/>
-    </linearGradient>
-  </defs></svg>
-  ${flameLayer('pyre__layer--back', 11, 46, 88)}
-  ${flameLayer('pyre__layer--front', 14, 26, 58)}
-</div>
-<p class="dracarys" aria-hidden="true">Dracarys</p>`;
-
 function wireHome() {
   const target = (e) => e.target.closest('.card, .row');
   document.addEventListener('dblclick', (e) => {
     const el = target(e);
-    if (el) complete(el, el.dataset.id, el.classList.contains('card'));
+    if (el) complete(el, el.dataset.id);
   });
 
   /* Only today's completions can be taken back. The box holds nothing else —
@@ -579,7 +522,7 @@ function wireHome() {
     const el = e.target.closest('.card, .row');
     if (!el) return;
     e.preventDefault();
-    complete(el, el.dataset.id, el.classList.contains('card'));
+    complete(el, el.dataset.id);
   });
   setInterval(() => { if (!animating) renderHome(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !animating) renderHome(); });

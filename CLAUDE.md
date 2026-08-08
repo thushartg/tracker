@@ -164,16 +164,16 @@ Show **one** task as the hero, plus at most **two** dimmed. More than that and t
 Double-click the hero task:
 
 1. Checkmark appears immediately. Task is marked done in `localStorage` right away.
-2. Fire rises from the base of the card in a wave, left to right, and the word **Dracarys** appears to the side.
-3. The task chars, burns away, and is removed from Home.
+2. The task fades out over ~340ms and is removed from Home.
+3. It reappears in **Kept today**, where it can be undone.
 
-No dragon. It was tried twice — heraldic line art and a hand drawing — and both read as flat cutouts sliding across the screen. Fire alone is better, and it is the part that always looked right.
+**No ceremony.** There is no fire, no dragon, and no spoken word. All three were tried and removed. Completing a task is a thing you do many times a day, and a 1.9-second set piece is only charming the first few. The short fade is not decoration — it is what lets the eye follow the task to the corner box instead of having it blink out.
 
-The fire is built from two layers of small SVG tongues at different blurs and opacities, screen-blended so they add light rather than occlude the card. Gradients and soft edges are what make it read as fire; solid shapes read as clipart.
+Do not reintroduce a completion animation. If one is ever wanted again, it belongs behind a setting, not on by default.
 
-The animation is decorative and runs **after** the state change. If it stutters or is interrupted, the completion still stands. Never gate the data write on the animation finishing.
+The fade is decorative and runs **after** the state change. If it stutters or is interrupted, the completion still stands. Never gate the data write on it finishing.
 
-Respect `prefers-reduced-motion`: skip the fire, fade the task out instead. The word may stay, since it is text and not motion.
+Respect `prefers-reduced-motion`: drop the fade, hide the task outright.
 
 ### Kept today
 
@@ -241,7 +241,7 @@ The house colors are **visual dressing only**. Tasks are not named after kingdom
 | `martell` | `#C25A1E` |
 | `arryn` | `#7FA8D9` |
 
-Accent appears on the task's icon, its rule/border, and the fire glow on burn. The background never changes color.
+Accent appears on the task's icon and its rule/border. The background never changes color.
 
 ### Type
 
@@ -263,7 +263,7 @@ Set a real type scale. Display gets size and letterspacing, not bold weight.
 - Default Tailwind/Bootstrap shadow utilities.
 - `Cinzel` — it's the stock fantasy typeface and reads as a template.
 - Emoji as icons.
-- Purple/violet gradients, glassmorphism, glow effects beyond the fire.
+- Purple/violet gradients, glassmorphism, glow effects of any kind.
 - `system-ui` as a display face.
 
 ---
@@ -279,8 +279,7 @@ Current artwork:
 | Asset | Source | Rights |
 |---|---|---|
 | Task icons (`ICONS` in `app.js`) | original | — |
-| Fire (`FLAME_SHAPES` / `pyreHTML` in `app.js`) | original | — |
 
-The word **Dracarys** is fine. A single invented word is not copyrightable, and this rule bars art, screenshots, logos, and sigils — not vocabulary. It is decorative text on a personal site, not branding on a product.
+The site carries no borrowed text either — the one invented word it used has been removed along with the fire. That was a design decision, not a legal one: the word was always fine to use, since a single invented word is not copyrightable and this rule bars art, screenshots, logos, and sigils, not vocabulary.
 
 Character designs are not fine, in any form. That includes 3D models, fan sculpts, game rips, and traced silhouettes — a render of a copyrighted creature is still a derivative of it.
