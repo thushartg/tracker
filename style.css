@@ -138,9 +138,12 @@ a { color: var(--parchment); text-decoration: none; }
   color: var(--dust);
   text-transform: uppercase;
 }
-/* On Home the date belongs to the illustration, not to the page — it sits
-   tight above the polygon on the left rather than floating up by the nav. */
-[data-page="home"] .dateline { margin-bottom: 0; }
+/* The date sits at the top left, under the masthead. It lives outside .wrap so
+   the vertical centring there moves the illustration and not the date. */
+[data-page="home"] .dateline {
+  margin-bottom: 0;
+  padding: var(--s7) var(--s5) 0;
+}
 
 /* ------------------------------------------------------------------ icon */
 
