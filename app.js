@@ -466,19 +466,19 @@ const SUBJECTS = {
      "piano" instantly at any size, and they are all straight edges. */
   piano: () => {
     const out = [
-      f(.30, 13, 27, 87, 27, 89, 40, 11, 40),        // fallboard
-      f(.52, 11, 40, 89, 40, 93, 48, 7, 48)          // key bed, seen from above
+      f(.30, 10, 10, 90, 10, 92, 29, 8, 29),         // fallboard
+      f(.52, 8, 29, 92, 29, 96, 41, 4, 41)           // key bed, seen from above
     ];
-    const n = 8, x0 = 7, x1 = 93, w = (x1 - x0) / n;
+    const n = 8, x0 = 4, x1 = 96, w = (x1 - x0) / n;
     for (let i = 0; i < n; i++) {
       const l = x0 + i * w + 0.7, r = x0 + (i + 1) * w - 0.7;
-      out.push(f(i % 2 ? .90 : .98, l, 48, r, 48, r, 75, l, 75));
+      out.push(f(i % 2 ? .90 : .98, l, 41, r, 41, r, 82, l, 82));
     }
     for (const i of [0, 1, 3, 4, 5]) {              // the 2-then-3 black-key group
       const c = x0 + (i + 1) * w, b = w * 0.33;
-      out.push(f(.10, c - b, 48, c + b, 48, c + b * 0.8, 65, c - b * 0.8, 65));
+      out.push(f(.10, c - b, 41, c + b, 41, c + b * 0.8, 67, c - b * 0.8, 67));
     }
-    out.push(f(.22, 7, 75, 93, 75, 93, 82, 7, 82));  // front lip
+    out.push(f(.22, 4, 82, 96, 82, 96, 92, 4, 92));  // front lip
     return out;
   },
 

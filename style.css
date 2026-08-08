@@ -105,6 +105,16 @@ a { color: var(--parchment); text-decoration: none; }
    floating in a centred column with the page's weight off to one side. */
 [data-page="home"] .wrap { margin-left: 0; }
 
+/* Home is short, so it sat at the top with the rest of the window empty below.
+   The masthead stays put and the content takes the space that is left, centred
+   in it. `flex: 1 1 auto` rather than a fixed height, so a window too small for
+   the content grows and scrolls normally instead of clipping its own top. */
+[data-page="home"] { min-height: 100vh; display: flex; flex-direction: column; }
+[data-page="home"] .wrap {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; justify-content: center;
+}
+
 /* The polygon alone is centred on the viewport, not on its column. Its left
    edge starts at the wrap's padding, so shifting it by half the viewport less
    that padding and half its own width lands it dead centre. Nothing else on
@@ -558,10 +568,12 @@ label:has(.input[aria-invalid="true"]) .field__label { color: #C25A1E; }
 .sync--gone { display: none; }
 
 /* The way back: a small chevron that appears only while the bar is gone. */
+/* Inside the left-aligned column now, so `auto` would centre it on the column
+   rather than the page. Half its own 2rem width is 1rem. */
 .sync-peek {
   display: grid; place-items: center;
   width: 2rem; height: 2rem;
-  margin: 0 auto var(--s5);
+  margin: var(--s5) 0 0 calc(50vw - var(--s5) - 1rem);
   color: var(--dust);
   background: none;
   border: var(--hair);

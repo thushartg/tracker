@@ -189,6 +189,8 @@ Show **one** task, never a list. The dimmed secondary rows are gone; arrows repl
 
 The task fills the page as a low-poly illustration — flat triangular facets shaded off its house accent — with its name, number and window on a bar beneath, and a round arrow either side.
 
+**Vertically centred.** The masthead stays at the top and the content takes the space left over, centred in it — Home is short and otherwise stacked from the top with the window empty below. The wrap uses `flex: 1 1 auto`, not a fixed height, so a window too small for the content grows and scrolls rather than clipping its own top.
+
 **Left, not centred.** Home drops the centred column and runs down the page's left edge, in line with the masthead title — the date, the illustration, and the arrow bar all share that edge. Only Home; the Tasks page stays centred.
 
 **One layer.** The illustration sits directly on `--ash`. No card, no `--iron` surface, no border, no accent bar down the side, no rule under the art. The empty and done states are flat for the same reason — they stand in the same slot, and a bordered box there would read as a bug. The only rule on the page is the short vertical one between the number and the name.
