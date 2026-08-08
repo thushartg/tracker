@@ -837,6 +837,13 @@ function wireHome() {
     e.preventDefault();
     complete(el, el.dataset.id);
   });
+  /* Lives outside the footer, so renderSync never rebuilds it — wire it once. */
+  const peek = $('#syncPeek');
+  if (peek) peek.addEventListener('click', () => {
+    localStorage.setItem(K.hidden, '0');
+    applySyncCollapse();
+  });
+
   setInterval(() => { if (!animating) renderHome(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !animating) renderHome(); });
 }
@@ -1186,9 +1193,14 @@ function applySyncCollapse() {
   const hidden = syncHidden();
   foot.classList.toggle('sync--collapsed', hidden);
 
-  /* Collapsed on Home means gone. No conditions. The Tasks page keeps its
-     handle, so the bar can still be reopened from there. */
-  foot.classList.toggle('sync--gone', hidden && page === 'home');
+  /* Collapsed on Home means gone. No conditions. */
+  const gone = hidden && page === 'home';
+  foot.classList.toggle('sync--gone', gone);
+
+  /* The chevron is the only way back once the bar is gone, so it is shown
+     exactly when the bar is not. */
+  const peek = $('#syncPeek');
+  if (peek) peek.hidden = !gone;
 
   const btn = $('#syncToggle');
   if (btn) {

@@ -114,7 +114,9 @@ Every write sends the current `sha`. No exceptions.
 
 Collapsed, the bar disappears **completely** on Home — no status line, no handle, no rule. Unconditionally.
 
-The **Tasks page never hides it**, so the Show handle always exists somewhere. Do not extend `sync--gone` to that page without first giving the bar another way back.
+The way back on Home is a small chevron (`#syncPeek`) centred below the piece, shown **exactly when the bar is not**. It lives outside the footer, so `renderSync` never rebuilds it — it is wired once in `wireHome`.
+
+The Tasks page never hides the bar at all. Do not extend `sync--gone` to that page without giving it a chevron too; the bar must always have a way back.
 
 ---
 

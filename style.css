@@ -554,9 +554,23 @@ label:has(.input[aria-invalid="true"]) .field__label { color: #C25A1E; }
 .sync--collapsed .sync__body { display: none; }
 .sync--collapsed { padding-bottom: var(--s3); }
 
-/* Collapsed on Home means gone — no status line, no handle, no rule. Set only
-   while the sync is healthy; see applySyncCollapse. */
+/* Collapsed on Home means gone — no status line, no handle, no rule. */
 .sync--gone { display: none; }
+
+/* The way back: a small chevron that appears only while the bar is gone. */
+.sync-peek {
+  display: grid; place-items: center;
+  width: 2rem; height: 2rem;
+  margin: 0 auto var(--s5);
+  color: var(--dust);
+  background: none;
+  border: var(--hair);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.sync-peek[hidden] { display: none; }
+.sync-peek:hover { color: var(--parchment); border-color: var(--dust); }
+.sync-peek svg { width: .875rem; height: .875rem; }
 
 .sync__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s3); }
 .sync__row label { flex: 1 1 12rem; min-width: 0; }
