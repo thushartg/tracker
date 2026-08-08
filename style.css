@@ -105,6 +105,14 @@ a { color: var(--parchment); text-decoration: none; }
    floating in a centred column with the page's weight off to one side. */
 [data-page="home"] .wrap { margin-left: 0; }
 
+/* The polygon alone is centred on the viewport, not on its column. Its left
+   edge starts at the wrap's padding, so shifting it by half the viewport less
+   that padding and half its own width lands it dead centre. Nothing else on
+   Home moves. */
+[data-page="home"] .poly {
+  margin-left: calc(50vw - var(--s5) - var(--poly-w) / 2);
+}
+
 .dateline {
   color: var(--dust);
   text-transform: uppercase;
@@ -136,11 +144,12 @@ a { color: var(--parchment); text-decoration: none; }
 /* The art carries the page, so give it room and a fixed square to sit in —
    a shifting box would make the facets jump on every re-render. */
 .piece__art {
-  display: grid; place-items: center;
+  display: grid; place-items: center start;
   padding: 0 0 var(--s5);
 }
 .poly {
-  width: min(56vh, 20rem);
+  --poly-w: min(56vh, 20rem);
+  width: var(--poly-w);
   max-width: 100%;
   aspect-ratio: 1;
   display: block;
