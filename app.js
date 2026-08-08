@@ -417,17 +417,23 @@ const SUBJECTS = {
     return out;
   },
 
+  /* Mid-stride, facing right. Limbs are two segments each and share their
+     joint vertices, so the figure holds together instead of reading as loose
+     blocks. Depth does the shading — near limbs light, far limbs dark. */
   run: () => [
-    f(.88, 46, 13, 57, 11, 58, 22, 47, 25),          // head
-    f(.62, 46, 25, 59, 27, 54, 50, 42, 46),          // torso
-    f(.40, 46, 28, 34, 41, 29, 36, 42, 25),          // trailing arm
-    f(.74, 57, 28, 71, 35, 73, 30, 58, 24),          // leading arm
-    f(.52, 54, 48, 67, 57, 60, 63, 49, 54),          // front thigh
-    f(.68, 67, 57, 73, 72, 66, 75, 59, 61),          // front shin
-    f(.36, 44, 46, 40, 62, 33, 60, 38, 44),          // back thigh
-    f(.50, 40, 62, 30, 77, 24, 72, 34, 60),          // back shin
-    f(.82, 73, 72, 81, 77, 78, 81, 66, 76),          // front foot
-    f(.30, 30, 77, 22, 83, 19, 78, 26, 72)           // back foot
+    f(.88, 60, 7, 67, 11, 67, 19, 60, 23, 53, 19, 53, 11),      // head
+    f(.60, 50, 27, 64, 25, 57, 53, 44, 55),                     // torso
+    f(.76, 58, 26, 64, 25, 57, 53),                             // chest, to the light
+    f(.74, 63.4, 24.4, 78.4, 32.4, 75.6, 37.6, 60.6, 29.6),     // lead upper arm
+    f(.82, 74.6, 33.2, 83.6, 21.2, 88.4, 24.8, 79.4, 36.8),     // lead forearm
+    f(.38, 49, 25.8, 53, 30.2, 40, 42.2, 36, 37.8),             // trailing upper arm
+    f(.44, 40.1, 37.9, 30.1, 27.9, 25.9, 32.1, 35.9, 42.1),     // trailing forearm
+    f(.68, 52, 51, 58, 50, 74, 57, 69, 62),                     // lead thigh, knee driven up
+    f(.72, 69, 58, 74, 57, 76, 76, 70, 77),                     // lead shin
+    f(.84, 70, 74, 76, 76, 80, 82, 69, 81),                     // lead foot
+    f(.40, 44, 52, 50, 53, 38, 70, 32, 66),                     // trailing thigh
+    f(.46, 32, 66, 38, 70, 30, 86, 24, 82),                     // trailing shin, extended back
+    f(.34, 24, 82, 30, 86, 20, 90, 16, 86)                      // trailing foot
   ],
 
   book: () => [
