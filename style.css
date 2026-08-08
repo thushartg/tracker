@@ -202,19 +202,50 @@ a { color: var(--parchment); text-decoration: none; }
    `view-box` puts transform-origin in the artwork's own 0..100 coordinates,
    which is where the shoulders and hips are. Opposite arm with opposite leg. */
 .limb { transform-box: view-box; }
-.limb--armA { transform-origin: 58px 27px; animation: stride-a 1s ease-in-out infinite; }
-.limb--armB { transform-origin: 51px 28px; animation: stride-b 1s ease-in-out infinite; }
-.limb--legA { transform-origin: 55px 52px; animation: stride-b 1s ease-in-out infinite; }
-.limb--legB { transform-origin: 47px 53px; animation: stride-a 1s ease-in-out infinite; }
 
-@keyframes stride-a {
-  0%, 100% { transform: rotate(-15deg); }
-  50%      { transform: rotate(15deg); }
+/* .72s per full cycle. At 1s it read as a march; a runner's cadence is quicker
+   than the eye expects. Arms swing less than legs, or it turns into flailing. */
+.limb--armA { transform-origin: 58px 27px;   animation: arm-a   .72s ease-in-out infinite; }
+.limb--armB { transform-origin: 51px 28px;   animation: arm-b   .72s ease-in-out infinite; }
+.limb--legA { transform-origin: 55px 52px;   animation: hip-a   .72s ease-in-out infinite; }
+.limb--legB { transform-origin: 47px 53px;   animation: hip-b   .72s ease-in-out infinite; }
+
+/* The knee is the whole difference. A leg that swings rigid from the hip is a
+   pendulum, and a pendulum reads as dancing. It folds hard through the recovery
+   and extends as the foot comes down. Origins are the knees. */
+.limb--legA-lower { transform-origin: 71.5px 59.5px; animation: knee-a .72s ease-in-out infinite; }
+.limb--legB-lower { transform-origin: 35px 68px;     animation: knee-b .72s ease-in-out infinite; }
+
+/* Negative swings the foot forward, positive back. */
+@keyframes hip-a { 0%, 100% { transform: rotate(17deg); }  50% { transform: rotate(-17deg); } }
+@keyframes hip-b { 0%, 100% { transform: rotate(-17deg); } 50% { transform: rotate(17deg); } }
+@keyframes arm-a { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
+@keyframes arm-b { 0%, 100% { transform: rotate(13deg); }  50% { transform: rotate(-13deg); } }
+
+/* Peaks a quarter-cycle after the hip starts forward — the fold happens while
+   the leg travels, not while it is planted. */
+@keyframes knee-a {
+  0%, 100% { transform: rotate(10deg); }
+  25%      { transform: rotate(52deg); }
+  50%      { transform: rotate(6deg); }
+  75%      { transform: rotate(3deg); }
 }
-@keyframes stride-b {
-  0%, 100% { transform: rotate(15deg); }
-  50%      { transform: rotate(-15deg); }
+@keyframes knee-b {
+  0%, 100% { transform: rotate(6deg); }
+  25%      { transform: rotate(3deg); }
+  50%      { transform: rotate(10deg); }
+  75%      { transform: rotate(52deg); }
 }
+
+/* A runner rises on each footfall — twice per cycle. Without it the figure
+   glides, and gliding is the other half of why it looked like dancing. */
+.poly:has(.limb) { animation: bob .36s ease-in-out infinite; }
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.8%); }
+}
+.poly--shatter:has(.limb),
+.poly--form:has(.limb) { animation: none; }
 
 /* A limb still swinging while its own shards fly apart reads as two things
    happening at once. */

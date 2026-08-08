@@ -432,11 +432,11 @@ const SUBJECTS = {
     fp('armB', .38, 49, 25.8, 53, 30.2, 40, 42.2, 36, 37.8),          // trailing upper arm
     fp('armB', .44, 40.1, 37.9, 30.1, 27.9, 25.9, 32.1, 35.9, 42.1),  // trailing forearm
     fp('legA', .68, 52, 51, 58, 50, 74, 57, 69, 62),                  // lead thigh
-    fp('legA', .72, 69, 58, 74, 57, 76, 76, 70, 77),                  // lead shin
-    fp('legA', .84, 70, 74, 76, 76, 80, 82, 69, 81),                  // lead foot
+    fp('legA.lower', .72, 69, 58, 74, 57, 76, 76, 70, 77),            // lead shin, below the knee
+    fp('legA.lower', .84, 70, 74, 76, 76, 80, 82, 69, 81),            // lead foot
     fp('legB', .40, 44, 52, 50, 53, 38, 70, 32, 66),                  // trailing thigh
-    fp('legB', .46, 32, 66, 38, 70, 30, 86, 24, 82),                  // trailing shin
-    fp('legB', .34, 24, 82, 30, 86, 20, 90, 16, 86)                   // trailing foot
+    fp('legB.lower', .46, 32, 66, 38, 70, 30, 86, 24, 82),            // trailing shin
+    fp('legB.lower', .34, 24, 82, 30, 86, 20, 90, 16, 86)             // trailing foot
   ],
 
   book: () => [
@@ -646,24 +646,41 @@ function shardOf(fc, i) {
 
 /**
  * Emits the facets, wrapping each consecutive run of same-tagged ones in a `<g>`.
- * The group carries the limb's swing; the polygons inside keep their own idle
+ * The group carries the limb's movement; the polygons inside keep their own idle
  * and shatter animations, so the two compose instead of fighting.
+ *
+ * A tag of `parent.child` nests — `legA.lower` puts the shin inside the thigh's
+ * group. That nesting is what makes a knee a knee: the shin turns about the knee
+ * *in the thigh's rotated space*, so it stays attached as the thigh swings. Two
+ * sibling groups cannot do it, because the knee they turn about would not move.
  */
 function groupFacets(facets, pts) {
-  const groups = [];
+  let html = '', top = null, sub = null;
+  const shut = (what) => { html += '</g>'.repeat(what); };
+
   facets.forEach((fc, i) => {
-    const s = shardOf(fc, i);
+    const [t = null, s = null] = String(fc.k || '').split('.');
+
+    if (t !== top) {
+      shut((sub ? 1 : 0) + (top ? 1 : 0));
+      sub = null;
+      top = t;
+      if (top) html += `<g class="limb limb--${top}">`;
+    } else if (s !== sub) {
+      shut(sub ? 1 : 0);
+      sub = null;
+    }
+    if (s && s !== sub) { sub = s; html += `<g class="limb limb--${top}-${sub}">`; }
+
+    const v = shardOf(fc, i);
     /* --i drives the stagger for all three facet animations; the delay lives in
        CSS so the breakup can stagger far tighter than the idle loop. */
-    const poly = `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
-      style="--i:${i};--dx:${s.x}px;--dy:${s.y}px;--rot:${s.r}deg"/>`;
-    const last = groups[groups.length - 1];
-    if (fc.k && last && last.k === fc.k) last.html += poly;
-    else groups.push({ k: fc.k, html: poly });
+    html += `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
+      style="--i:${i};--dx:${v.x}px;--dy:${v.y}px;--rot:${v.r}deg"/>`;
   });
-  return groups
-    .map((g) => (g.k ? `<g class="limb limb--${g.k}">${g.html}</g>` : g.html))
-    .join('');
+
+  shut((sub ? 1 : 0) + (top ? 1 : 0));
+  return html;
 }
 
 function polyHTML(task) {
