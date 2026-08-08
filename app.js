@@ -12,7 +12,8 @@ const K = {
   log:   'ledger.log',
   dirty: 'ledger.dirty',
   owner: 'ledger.owner',
-  token: 'ledger.token'
+  token: 'ledger.token',
+  hidden: 'ledger.syncHidden'
 };
 
 /* Hand-drawn single-stroke sigils. 24x24, stroke inherits the house accent. */
@@ -754,35 +755,61 @@ function setStatus(text) {
   if (node) node.textContent = text;
 }
 
+/* Collapsed by choice, remembered. The status line stays visible either way —
+   a failed flush must never be hidden behind a closed drawer. */
+const syncHidden = () => localStorage.getItem(K.hidden) === '1';
+
+function applySyncCollapse() {
+  const foot = $('#sync');
+  if (!foot) return;
+  const hidden = syncHidden();
+  foot.classList.toggle('sync--collapsed', hidden);
+  const btn = $('#syncToggle');
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(!hidden));
+    btn.textContent = hidden ? 'Show' : 'Hide';
+    btn.setAttribute('aria-label', hidden ? 'Show sync details' : 'Hide sync details');
+  }
+}
+
 function renderSync() {
   const foot = $('#sync');
   const c = cfg();
 
-  foot.innerHTML = hasToken()
-    ? `<div class="sync__inner">
-         <p class="sync__status mono">${esc(status)}</p>
-         <p class="sync__note">Syncing <span class="mono">${esc(c.owner)}/${DATA_REPO}</span>.
-            Completions flush on a 30-second debounce and when this page is hidden.</p>
-         <div class="sync__row">
-           <button class="btn" id="syncNow">Sync now</button>
-           <button class="btn" id="forget">Forget token</button>
-         </div>
+  const body = hasToken()
+    ? `<p class="sync__note">Syncing <span class="mono">${esc(c.owner)}/${DATA_REPO}</span>.
+          Completions flush on a 30-second debounce and when this page is hidden.</p>
+       <div class="sync__row">
+         <button class="btn" id="syncNow">Sync now</button>
+         <button class="btn" id="forget">Forget token</button>
        </div>`
-    : `<div class="sync__inner">
-         <p class="sync__status mono">${esc(status || 'local only')}</p>
-         <p class="sync__note">Working from local storage. Add a fine-grained token scoped to
-            <span class="mono">${DATA_REPO}</span> (Contents: read&nbsp;and&nbsp;write) to sync.
-            It is kept in this browser only — never in a file, a commit, or a URL.</p>
-         <div class="sync__row">
-           <label><span class="field__label">GitHub user</span>
-             <input class="input mono" id="ghOwner" autocomplete="off" value="${esc(c.owner)}"></label>
-           <label><span class="field__label">Token</span>
-             <input class="input mono" id="ghToken" type="password" autocomplete="off"></label>
-           <button class="btn btn--primary" id="ghSave">Save</button>
-         </div>
+    : `<p class="sync__note">Working from local storage. Add a fine-grained token scoped to
+          <span class="mono">${DATA_REPO}</span> (Contents: read&nbsp;and&nbsp;write) to sync.
+          It is kept in this browser only — never in a file, a commit, or a URL.</p>
+       <div class="sync__row">
+         <label><span class="field__label">GitHub user</span>
+           <input class="input mono" id="ghOwner" autocomplete="off" value="${esc(c.owner)}"></label>
+         <label><span class="field__label">Token</span>
+           <input class="input mono" id="ghToken" type="password" autocomplete="off"></label>
+         <button class="btn btn--primary" id="ghSave">Save</button>
        </div>`;
 
+  foot.innerHTML = `<div class="sync__inner">
+      <div class="sync__bar">
+        <p class="sync__status mono">${esc(status || (hasToken() ? '' : 'local only'))}</p>
+        <button class="btn btn--quiet sync__toggle" id="syncToggle" aria-controls="syncBody"
+                aria-expanded="true">Hide</button>
+      </div>
+      <div class="sync__body" id="syncBody">${body}</div>
+    </div>`;
+
   const on = (sel, fn) => { const n = $(sel); if (n) n.addEventListener('click', fn); };
+
+  on('#syncToggle', () => {
+    localStorage.setItem(K.hidden, syncHidden() ? '0' : '1');
+    applySyncCollapse();
+  });
+  applySyncCollapse();
 
   on('#ghSave', () => {
     const owner = $('#ghOwner').value.trim(), token = $('#ghToken').value.trim();
