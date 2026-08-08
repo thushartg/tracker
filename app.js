@@ -595,6 +595,27 @@ function subjectFor(task) {
 
 const facetsFor = (task) => (subjectFor(task) || (() => gemFacets(task.id)))();
 
+/**
+ * Where a shard goes when the piece breaks: straight out from the centre, a
+ * little further every fifth facet so the burst edge is ragged rather than a
+ * clean expanding ring. Derived from the facet, so a shard always flies the way
+ * it faces, and the same task always breaks the same way.
+ */
+function shardOf(fc, i) {
+  let sx = 0, sy = 0;
+  const n = fc.p.length / 2;
+  for (let j = 0; j < fc.p.length; j += 2) { sx += fc.p[j]; sy += fc.p[j + 1]; }
+  let vx = sx / n - 50, vy = sy / n - 50;
+  let len = Math.hypot(vx, vy);
+  if (len < 0.001) { vx = Math.cos(i * 2.4); vy = Math.sin(i * 2.4); len = 1; }
+  const reach = 54 + (i % 5) * 7;
+  return {
+    x: (vx / len * reach).toFixed(1),
+    y: (vy / len * reach).toFixed(1),
+    r: ((i * 53) % 100) - 50
+  };
+}
+
 function polyHTML(task) {
   const facets = facetsFor(task);
   const pts = (p) => {
@@ -604,8 +625,13 @@ function polyHTML(task) {
   };
   return `<svg class="poly" viewBox="0 0 100 100" role="img"
                aria-label="${esc(task.label)}" preserveAspectRatio="xMidYMid meet">
-    ${facets.map((fc, i) => `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
-        style="animation-delay:${(i * 0.09).toFixed(2)}s"/>`).join('')}
+    ${facets.map((fc, i) => {
+      const s = shardOf(fc, i);
+      /* --i drives the stagger for all three animations; the delay lives in CSS
+         so the breakup can stagger far tighter than the idle loop. */
+      return `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
+        style="--i:${i};--dx:${s.x}px;--dy:${s.y}px;--rot:${s.r}deg"/>`;
+    }).join('')}
   </svg>`;
 }
 
@@ -739,12 +765,44 @@ function renderHome() {
   stage.innerHTML = pieceHTML(task, m, wd, stageIx, list.length);
 }
 
-/** Wraps at both ends — the list is a loop, not a scroll. */
+const SHATTER_MS = 260;
+const FORM_MS = 460;
+
+/* Held while the piece is breaking up, so the 60-second refresh cannot render
+   over a half-scattered polygon. */
+let swapping = false;
+
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Wraps at both ends — the list is a loop, not a scroll.
+ *
+ * The outgoing polygon shatters, then the incoming one forms out of the same
+ * scatter. The swap happens between the two, so what assembles is genuinely the
+ * next task's facets and not a reshuffle of the old ones.
+ */
 function stepStage(delta) {
   const { list } = stageList();
-  if (list.length < 2) return;
-  stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
-  renderHome();
+  if (list.length < 2 || swapping) return;
+
+  const land = () => {
+    stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
+    renderHome();
+    const fresh = $('.poly');
+    if (fresh) fresh.classList.add('poly--form');
+    /* Drop the class so the idle loop takes back over. */
+    setTimeout(() => {
+      if (fresh) fresh.classList.remove('poly--form');
+      swapping = false;
+    }, FORM_MS);
+  };
+
+  const poly = $('.poly');
+  if (!poly || reducedMotion()) { land(); return; }
+
+  swapping = true;
+  poly.classList.add('poly--shatter');
+  setTimeout(land, SHATTER_MS);
 }
 
 /* ------------------------------------------------------------ kept today */
@@ -844,8 +902,10 @@ function wireHome() {
     applySyncCollapse();
   });
 
-  setInterval(() => { if (!animating) renderHome(); }, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !animating) renderHome(); });
+  setInterval(() => { if (!animating && !swapping) renderHome(); }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !animating && !swapping) renderHome();
+  });
 }
 
 /* ================================================================= tasks */

@@ -221,7 +221,11 @@ The label pass is deliberately narrow. Every icon key is authored, so an icon al
 
 To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key it is picked up automatically; if not, it becomes label-addressable with no further wiring.
 
-The loop is facet opacity, out of phase, nothing more. No glow, no filter, no transform — those read as the effects this theme bans. `prefers-reduced-motion` stops it dead at full opacity.
+The idle loop is facet opacity, out of phase, nothing more. No glow, no filter. `prefers-reduced-motion` stops it dead at full opacity.
+
+**Changing task shatters the piece.** The outgoing polygon breaks apart, then the incoming one gathers out of the same scatter. Each facet carries `--dx`/`--dy`/`--rot` from `shardOf()` — straight out from the centre, a little further every fifth facet so the burst edge is ragged. Derived from the facet, so a shard flies the way it faces and a task always breaks the same way.
+
+The swap happens **between** the two halves, so what assembles is genuinely the next task's facets rather than a reshuffle of the old ones. `swapping` is held across it so the 60-second refresh cannot render over a half-scattered polygon. Shards use `transform-box: fill-box` to turn about themselves, and user units so the burst scales with the artwork. Reduced motion skips straight to the swap.
 
 **No borrowed art, ever.** The style is common to low-poly illustration; the shapes here are authored from scratch. Do not trace, import, or adapt an existing illustration — see Legal.
 

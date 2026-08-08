@@ -182,10 +182,40 @@ a { color: var(--parchment); text-decoration: none; }
 
 /* The loop: facets breathe out of phase, so the form never sits quite still.
    Opacity only — no glow, no filter. */
-.poly polygon { animation: facet 5.2s ease-in-out infinite; }
+.poly polygon {
+  /* fill-box so each shard turns about itself. Lengths stay in user units, so
+     the burst scales with the artwork instead of being pinned to pixels. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: facet 5.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * .09s);
+}
 @keyframes facet {
   0%, 100% { opacity: .82; }
   50%      { opacity: 1; }
+}
+
+/* Changing task: the piece breaks apart, then the next one gathers out of the
+   same scatter. Both read --dx/--dy/--rot, set per facet in polyHTML, so a
+   shard leaves along the line it arrives on. */
+@keyframes shatter {
+  from { transform: none; opacity: 1; }
+  to   { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes form {
+  from { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* After .poly polygon, so these win the equal-specificity tie and replace the
+   idle loop outright. The stagger is far tighter than the loop's. */
+.poly--shatter polygon {
+  animation: shatter .26s ease-in forwards;
+  animation-delay: calc(var(--i) * .008s);
+}
+.poly--form polygon {
+  animation: form .40s cubic-bezier(.2, .9, .3, 1) backwards;
+  animation-delay: calc(var(--i) * .008s);
 }
 
 .piece__bar {
@@ -244,7 +274,9 @@ a { color: var(--parchment); text-decoration: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .poly polygon { animation: none; opacity: 1; }
+  .poly polygon,
+  .poly--shatter polygon,
+  .poly--form polygon { animation: none; opacity: 1; transform: none; }
 }
 
 /* checkmark — appears the instant the write lands */
