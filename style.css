@@ -104,8 +104,10 @@ a { color: var(--parchment); text-decoration: none; }
 .dateline {
   color: var(--dust);
   text-transform: uppercase;
-  margin-bottom: var(--s5);
 }
+/* On Home the date belongs to the illustration, not to the page — it sits
+   tight above the polygon on the left rather than floating up by the nav. */
+[data-page="home"] .dateline { margin-bottom: 0; }
 
 /* ------------------------------------------------------------------ icon */
 
@@ -131,7 +133,7 @@ a { color: var(--parchment); text-decoration: none; }
    a shifting box would make the facets jump on every re-render. */
 .piece__art {
   display: grid; place-items: center;
-  padding: var(--s4) 0 var(--s5);
+  padding: 0 0 var(--s5);
 }
 .poly {
   width: min(56vh, 20rem);
