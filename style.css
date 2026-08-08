@@ -135,10 +135,8 @@ a { color: var(--parchment); text-decoration: none; }
 
 /* The art carries the page, so give it room and a fixed square to sit in —
    a shifting box would make the facets jump on every re-render. */
-/* Left, not centred — the art lines up with the date above it and the arrows
-   below, so the whole piece reads as one column. */
 .piece__art {
-  display: grid; place-items: center start;
+  display: grid; place-items: center;
   padding: 0 0 var(--s5);
 }
 .poly {
