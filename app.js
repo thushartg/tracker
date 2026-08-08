@@ -334,7 +334,15 @@ window.addEventListener('online', flush);
  */
 function resolveDay() {
   const m = nowMinutes(), wd = isoWeekday(), done = store.doneToday();
-  const pool = store.tasks.filter((t) => scheduledToday(t, wd) && !(done[t.id] && done[t.id].done));
+
+  /* Two different questions, and they need two different lists.
+     `scheduled` — was anything on the books today at all?
+     `pool`      — what is still outstanding?
+     Deriving "all done" from `pool` cannot work: `pool` is empty in that case
+     by definition, so the done state was unreachable and finishing everything
+     read as "nothing was scheduled". */
+  const scheduled = store.tasks.filter((t) => scheduledToday(t, wd));
+  const pool = scheduled.filter((t) => !(done[t.id] && done[t.id].done));
 
   const open     = pool.filter((t) => inWindow(t, m)).sort((a, b) => endsIn(a, m) - endsIn(b, m));
   const rest     = pool.filter((t) => !inWindow(t, m));
@@ -353,7 +361,7 @@ function resolveDay() {
     ...upcoming.slice(mode === 'upcoming' ? 1 : 0).map((t) => [t, 'upcoming'])
   ].slice(0, 2);
 
-  return { hero, mode, dimmed, anyToday: pool.length > 0 };
+  return { hero, mode, dimmed, anyToday: scheduled.length > 0 };
 }
 
 const windowText = (t) => `${t.window.start}–${t.window.end}`;
