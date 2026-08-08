@@ -484,27 +484,98 @@ label:has(.input[aria-invalid="true"]) .field__label { color: #C25A1E; }
 .btn--quiet { border-color: transparent; padding: var(--s1) var(--s2); }
 
 .list .item {
-  display: flex; align-items: center; gap: var(--s3);
-  padding: var(--s3) var(--s4);
   border: var(--hair);
   border-top: 0;
 }
 .list .item:first-child { border-top: var(--hair); }
+.list .item--open { background: var(--iron); }
 
+.item__row {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  cursor: pointer;
+}
+
+/* The label is the history handle — a real button, so it carries aria-expanded
+   and reaches the keyboard. It must not look like one. */
+.item__toggle {
+  flex: 1 1 auto; min-width: 0;
+  display: block; text-align: left;
+  background: none; border: 0; padding: 0;
+  color: inherit; font: inherit; cursor: pointer;
+}
 .item__label {
+  display: block;
   font-family: var(--display);
   font-size: 1.0625rem;
   letter-spacing: .02em;
-  flex: 1 1 auto;
-  min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.item__toggle:hover .item__label { color: var(--accent); }
+
 .item__window { font-family: var(--mono); font-size: .72rem; color: var(--dust); flex: none; }
 .item__days   { font-family: var(--mono); font-size: .72rem; color: var(--dust); flex: none; letter-spacing: .1em; }
 .item__days b { color: var(--parchment); font-weight: 500; }
 .item__actions { display: flex; gap: var(--s1); flex: none; }
 
 .empty { color: var(--dust); padding: var(--s4) 0; }
+
+/* --------------------------------------------------------- task history */
+
+.history {
+  padding: var(--s3) var(--s4) var(--s4);
+  border-top: var(--hair);
+  display: flex; flex-direction: column; gap: var(--s3);
+}
+
+.history__bar { display: flex; align-items: center; gap: var(--s2); }
+.history__month {
+  font-family: var(--display); font-size: .95rem; letter-spacing: .04em;
+  min-width: 9rem;
+}
+.history__tally { margin-left: auto; font-size: .72rem; color: var(--dust); }
+.history__legend { font-size: .68rem; color: var(--dust); }
+.history__note { font-size: .8rem; font-style: italic; color: var(--dust); }
+.btn[disabled] { opacity: .3; cursor: default; }
+.btn[disabled]:hover { color: var(--dust); border-color: transparent; }
+
+.cal, .cal__head {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  max-width: 24rem;
+  list-style: none;
+}
+.cal__head {
+  font-size: .62rem; color: var(--dust); letter-spacing: .1em;
+  text-align: center;
+}
+
+.cal__day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--dust);
+}
+.cal__n    { font-size: .58rem; line-height: 1; opacity: .55; }
+.cal__mark { font-size: .8rem;  line-height: 1; }
+
+/* State is carried by the glyph first; colour only reinforces it. */
+.cal__day--done   { border-color: var(--accent); color: var(--accent); }
+.cal__day--missed { border-color: var(--soot); color: #8C6A5E; }
+.cal__day--today  { border-color: var(--dust); color: var(--parchment); }
+.cal__day--off    { opacity: .35; }
+.cal__day--future { opacity: .25; }
+.cal__day--unknown { border: 1px dashed var(--soot); opacity: .5; }
+
+@media (max-width: 34rem) {
+  .history__month { min-width: 7rem; font-size: .85rem; }
+  .history__tally { width: 100%; margin: 0; order: 4; }
+  .history__bar { flex-wrap: wrap; }
+}
 
 /* ------------------------------------------------------------------ sync */
 

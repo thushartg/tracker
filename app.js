@@ -7,13 +7,18 @@ const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const DATA_REPO = 'tracker-data';
 const FLUSH_MS = 30000;
 
+/* How far back the per-task history will page. Bounds the number of month
+   files a curious click can pull, and stops paging into empty prehistory. */
+const HISTORY_MONTHS = 12;
+
 const K = {
   tasks: 'ledger.tasks',
   log:   'ledger.log',
   dirty: 'ledger.dirty',
   owner: 'ledger.owner',
   token: 'ledger.token',
-  hidden: 'ledger.syncHidden'
+  hidden: 'ledger.syncHidden',
+  months: 'ledger.months'
 };
 
 /* Hand-drawn single-stroke sigils. 24x24, stroke inherits the house accent. */
@@ -94,11 +99,13 @@ const store = {
   tasks: [],
   log: {},                                  // { 'YYYY-MM-DD': { id: { done, at } } }
   dirty: { tasks: false, months: [] },
+  months: {},                               // { 'YYYY-MM': 'loaded' | 'missing' }
 
   load() {
     this.tasks = (readJSON(K.tasks, { tasks: [] }).tasks || []).map(normalize).filter(Boolean);
     this.log   = readJSON(K.log, {});
     this.dirty = Object.assign({ tasks: false, months: [] }, readJSON(K.dirty, {}));
+    this.months = readJSON(K.months, {});
   },
   saveTasks(markDirty = true) {
     localStorage.setItem(K.tasks, JSON.stringify({ tasks: this.tasks }));
@@ -110,6 +117,15 @@ const store = {
     this.saveDirty();
   },
   saveDirty() { localStorage.setItem(K.dirty, JSON.stringify(this.dirty)); },
+  saveMonths() { localStorage.setItem(K.months, JSON.stringify(this.months)); },
+
+  /**
+   * 'loaded'  — the month file was fetched (or fetched and found absent), so a
+   *             scheduled day with no entry really was missed.
+   * 'unknown' — never fetched. A day with no entry proves nothing, and must not
+   *             be drawn as a miss.
+   */
+  monthState(month) { return this.months[month] || 'unknown'; },
 
   doneToday() { return this.log[todayKey()] || {}; },
 
@@ -256,6 +272,38 @@ function mergeMonth(remote, local) {
   return out;
 }
 
+/**
+ * Fetch one month file and fold it into the log. Cached by `store.months`, so
+ * paging back through history costs one request per month, once.
+ *
+ * `force` refetches a month we already hold — the current month on every boot,
+ * because it is the one still being written to.
+ */
+const monthsInFlight = new Set();
+
+async function ensureMonth(month, force = false) {
+  if (!hasToken()) return false;
+  if (!force && store.monthState(month) !== 'unknown') return false;
+  if (monthsInFlight.has(month)) return false;
+
+  monthsInFlight.add(month);
+  try {
+    const { data } = await ghRead(`data/${month}.json`);
+    if (data) {
+      for (const [date, entries] of Object.entries(data)) {
+        store.log[date] = { ...entries, ...store.log[date] };   // local wins
+      }
+      localStorage.setItem(K.log, JSON.stringify(store.log));
+    }
+    /* A 404 is an answer: that month has no file, so nothing was logged in it. */
+    store.months[month] = data ? 'loaded' : 'missing';
+    store.saveMonths();
+    return true;
+  } finally {
+    monthsInFlight.delete(month);
+  }
+}
+
 async function pull() {
   if (!hasToken()) { setStatus('local only'); return; }
   setStatus('loading');
@@ -267,14 +315,7 @@ async function pull() {
         store.saveTasks(false);
       }
     }
-    const month = todayKey().slice(0, 7);
-    const { data } = await ghRead(`data/${month}.json`);
-    if (data) {
-      for (const [date, entries] of Object.entries(data)) {
-        store.log[date] = { ...entries, ...store.log[date] };   // local wins
-      }
-      localStorage.setItem(K.log, JSON.stringify(store.log));
-    }
+    await ensureMonth(todayKey().slice(0, 7), true);
     setStatus(store.dirty.months.length || store.dirty.tasks ? 'pending' : 'synced');
     render();
   } catch (err) {
@@ -477,6 +518,112 @@ function wireHome() {
 /* ================================================================= tasks */
 
 let editing = null;
+let expanded = null;        // task id whose history is open
+let histMonth = null;       // 'YYYY-MM' shown in that history
+
+/* ------------------------------------------------------------- calendar */
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December'];
+
+const thisMonth = () => todayKey().slice(0, 7);
+
+function shiftMonth(month, delta) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+function monthLabel(month) {
+  const [y, m] = month.split('-').map(Number);
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+/** Monday-first cells for a month. Leading blanks are null. */
+function monthCells(month) {
+  const [y, m] = month.split('-').map(Number);
+  const lead = (new Date(y, m - 1, 1).getDay() || 7) - 1;
+  const days = new Date(y, m, 0).getDate();
+  const cells = new Array(lead).fill(null);
+  for (let d = 1; d <= days; d++) cells.push(`${y}-${pad(m)}-${pad(d)}`);
+  return cells;
+}
+
+const GLYPH = { done: '✓', missed: '✗', today: '○', off: '–', future: '', unknown: '?' };
+const STATE_WORD = {
+  done: 'done', missed: 'missed', today: 'today, not yet done',
+  off: 'not scheduled', future: 'still to come', unknown: 'no record'
+};
+
+/**
+ * A completion is a fact and always wins — including on a weekday the task is
+ * no longer scheduled for. `config/tasks.json` holds only the task's *current*
+ * days, with no history of past schedules, so a day is called `missed` only
+ * when the current schedule covers it and the month was actually fetched.
+ */
+function dayState(task, key) {
+  if ((store.log[key] || {})[task.id]?.done) return 'done';
+
+  const today = todayKey();
+  if (key > today) return 'future';
+  if (!scheduledToday(task, isoWeekday(new Date(`${key}T00:00:00`)))) return 'off';
+  if (key === today) return 'today';
+  if (store.monthState(key.slice(0, 7)) === 'unknown') return 'unknown';
+  return 'missed';
+}
+
+function historyHTML(task, month) {
+  const cells = monthCells(month);
+  const states = cells.map((key) => (key ? dayState(task, key) : null));
+  const count = (s) => states.filter((x) => x === s).length;
+
+  const grid = cells.map((key, i) => {
+    if (!key) return '<li class="cal__pad" aria-hidden="true"></li>';
+    const state = states[i];
+    const d = +key.slice(8);
+    return `<li class="cal__day cal__day--${state}"
+                title="${d} ${monthLabel(month)} — ${STATE_WORD[state]}">
+              <span class="cal__n mono">${d}</span>
+              <span class="cal__mark" aria-hidden="true">${GLYPH[state]}</span>
+              <span class="visually-hidden">${d} ${STATE_WORD[state]}</span>
+            </li>`;
+  }).join('');
+
+  const unknowns = count('unknown');
+  const notes = [];
+  if (unknowns) {
+    notes.push(hasToken()
+      ? 'Some days are still loading from <span class="mono">tracker-data</span>.'
+      : 'Not synced — only days recorded in this browser are known.');
+  }
+  if (task.days && task.days.length && task.days.length < 7) {
+    notes.push('Misses follow the task’s current days. Changing them re-reads the past.');
+  }
+
+  return `
+    <div class="history" id="hist-${esc(task.id)}">
+      <div class="history__bar">
+        <button class="btn btn--quiet" data-mon="-1"
+                ${month <= shiftMonth(thisMonth(), -HISTORY_MONTHS) ? 'disabled' : ''}
+                aria-label="Previous month">&larr;</button>
+        <span class="history__month">${monthLabel(month)}</span>
+        <button class="btn btn--quiet" data-mon="1"
+                ${month >= thisMonth() ? 'disabled' : ''}
+                aria-label="Next month">&rarr;</button>
+        <span class="history__tally mono">${count('done')} done · ${count('missed')} missed</span>
+      </div>
+
+      <ol class="cal__head mono" aria-hidden="true">
+        ${DAY_LETTERS.map((l) => `<li>${l}</li>`).join('')}
+      </ol>
+      <ol class="cal">${grid}</ol>
+
+      <p class="history__legend mono">✓ done &nbsp; ✗ missed &nbsp; ○ today &nbsp; – not scheduled</p>
+      ${notes.map((n) => `<p class="history__note">${n}</p>`).join('')}
+    </div>`;
+}
+
+/* ---------------------------------------------------------------- list */
 
 function renderTasks() {
   const list = $('#taskList');
@@ -487,17 +634,40 @@ function renderTasks() {
   const ordered = store.tasks.slice()
     .sort((a, b) => toMinutes(a.window.start) - toMinutes(b.window.start));
 
-  list.innerHTML = ordered.map((t) => `
-    <li class="item" data-house="${t.color}">
-      ${icon(t.icon)}
-      <span class="item__label">${esc(t.label)}</span>
-      <span class="item__days">${daysLabel(t.days)}</span>
-      <span class="item__window">${windowText(t)}</span>
-      <span class="item__actions">
-        <button class="btn btn--quiet" data-edit="${esc(t.id)}">Edit</button>
-        <button class="btn btn--quiet" data-del="${esc(t.id)}">Delete</button>
-      </span>
-    </li>`).join('');
+  list.innerHTML = ordered.map((t) => {
+    const open = expanded === t.id;
+    return `
+    <li class="item${open ? ' item--open' : ''}" data-house="${t.color}">
+      <div class="item__row">
+        ${icon(t.icon)}
+        <button type="button" class="item__toggle" data-hist="${esc(t.id)}"
+                aria-expanded="${open}" aria-controls="hist-${esc(t.id)}">
+          <span class="item__label">${esc(t.label)}</span>
+        </button>
+        <span class="item__days">${daysLabel(t.days)}</span>
+        <span class="item__window">${windowText(t)}</span>
+        <span class="item__actions">
+          <button class="btn btn--quiet" data-edit="${esc(t.id)}">Edit</button>
+          <button class="btn btn--quiet" data-del="${esc(t.id)}">Delete</button>
+        </span>
+      </div>
+      ${open ? historyHTML(t, histMonth || thisMonth()) : ''}
+    </li>`;
+  }).join('');
+}
+
+/** Paint first, then fill in whatever the network can add. */
+async function showHistory(id, month) {
+  expanded = id;
+  histMonth = month;
+  renderTasks();
+  if (id === null) return;
+  try {
+    if (await ensureMonth(month)) renderTasks();
+  } catch (err) {
+    setStatus(`load failed — ${err.message}`);
+    renderSync();
+  }
 }
 
 const daysLabel = (days) => DAY_LETTERS
@@ -638,15 +808,35 @@ function wireTasks() {
       $('#f_label').focus();
       return;
     }
+
+    const mon = e.target.closest('[data-mon]');
+    if (mon) {
+      showHistory(expanded, shiftMonth(histMonth || thisMonth(), +mon.dataset.mon));
+      return;
+    }
+
     const del = e.target.closest('[data-del]');
-    if (!del) return;
-    const task = store.tasks.find((t) => t.id === del.dataset.del);
-    if (!task || !confirm(`Delete “${task.label}”?`)) return;
-    store.tasks = store.tasks.filter((t) => t.id !== task.id);
-    store.saveTasks();
-    scheduleFlush();
-    if (editing === task.id) fillForm(null);
-    renderTasks();
+    if (del) {
+      const task = store.tasks.find((t) => t.id === del.dataset.del);
+      if (!task || !confirm(`Delete “${task.label}”?`)) return;
+      store.tasks = store.tasks.filter((t) => t.id !== task.id);
+      store.saveTasks();
+      scheduleFlush();
+      if (editing === task.id) fillForm(null);
+      if (expanded === task.id) expanded = null;
+      renderTasks();
+      return;
+    }
+
+    /* Clicks inside an open history are for reading, not for closing it. */
+    if (e.target.closest('.history')) return;
+
+    const row = e.target.closest('.item');
+    if (!row) return;
+    const id = row.querySelector('[data-hist]')?.dataset.hist;
+    if (!id) return;
+    /* Reopening on a different task starts back at the current month. */
+    showHistory(expanded === id ? null : id, expanded === id ? null : thisMonth());
   });
 }
 

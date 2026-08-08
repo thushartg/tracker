@@ -14,7 +14,7 @@ Two pages. Nothing else.
 Do not build these. Do not suggest them.
 
 - No login, no accounts, no multi-user.
-- No streaks, stats, charts, calendars, or history views.
+- No streaks or stats. No charts. No history view **except** the per-task calendar on the Tasks page (below) — that one carve-out is deliberate and bounded; it does not open the door to a dashboard.
 - No notifications, reminders, or service workers.
 - No scoring or relevance model. Time-window matching is the whole suggestion logic.
 - No backend, no framework beyond what's listed below.
@@ -65,6 +65,12 @@ GET /repos/{owner}/tracker-data/contents/{path}
 ```
 
 Do **not** use `raw.githubusercontent.com` — it's CDN-cached for ~5 minutes and writes will appear to vanish.
+
+Boot fetches `config/tasks.json` and **the current month only**. Past months are fetched lazily, one file per month, the first time a task history pages back to them. `ledger.months` in `localStorage` records the outcome per month (`loaded` / `missing`) so each is fetched once.
+
+That record is load-bearing, not a cache detail. A month that was never fetched is `unknown`, and a day inside it can only be drawn as "no record" — never as a miss. Absence of a completion is evidence only once the month file has been read.
+
+Paging stops at `HISTORY_MONTHS` (12) back from the current month.
 
 ### Write
 
@@ -167,7 +173,27 @@ Respect `prefers-reduced-motion`: skip the fire, fade the task out instead. The 
 
 A list of tasks with add / edit / delete. Each task has: label, icon, house color (fixed dropdown), start time, end time, days of week.
 
-That's it. No bulk actions, no drag-to-reorder, no categories.
+No bulk actions, no drag-to-reorder, no categories.
+
+### Task history
+
+Clicking a row expands a month calendar for that task alone. One task at a time; opening another closes the first and resets to the current month.
+
+Six day states, resolved in this order — the order is the whole correctness story:
+
+1. **done** — a completion is logged. Wins over everything below, including a weekday the task is no longer scheduled for.
+2. **future** — after today. Never a miss.
+3. **not scheduled** — the task's current `days` don't cover that weekday.
+4. **today** — reached its day but not yet logged. Not a miss.
+5. **no record** — the month was never fetched. Not a miss.
+6. **missed** — scheduled, past, month fetched, no entry.
+
+Two honesty constraints, both easy to break:
+
+- **`missed` requires a fetched month.** Never infer a miss from an empty local log. Without a token every past month is `unknown`, and the panel says so rather than drawing a wall of crosses.
+- **Past schedules are not recorded.** `config/tasks.json` stores only a task's *current* days and window, with no history. Edit a task's days and its past misses are recomputed under the new schedule. Rule 1 limits the damage — real completions never disappear — but misses before an edit are an approximation, and the panel says so. Do not present them as exact, and do not add schedule versioning to fix it; that's a bigger change than this view is worth.
+
+State is carried by a glyph (`✓ ✗ ○ –`) first and colour second, so the calendar survives being read without colour.
 
 ---
 
