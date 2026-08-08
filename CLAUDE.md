@@ -133,47 +133,33 @@ Log timestamps carry an offset. Window definitions do not.
 
 ## Home page
 
-Home is a chart, not a list. A full-bleed engraved map of an invented continent fills the page; today's tasks stand as flags on its mountain summits. Drag or scroll to move around it; on load it glides to the hero.
-
 Recompute the active task on a 60-second interval and on `visibilitychange`. Not a 1-second loop.
 
-Resolution order — **unchanged**. The chart is a new presentation of the same answer:
+Resolution order:
 
 1. Drop tasks not scheduled for today's weekday. Drop tasks already completed today.
-2. **In-window** → the one with the **soonest `end`** is the hero. The task about to expire is the one that matters.
-3. **Nothing in-window** → the next upcoming task is the hero, with a countdown ("Gym in 2h").
+2. **In-window** → show the one with the **soonest `end`**. The task about to expire is the one that matters.
+3. **Nothing in-window** → show the next upcoming task with a countdown ("Gym in 2h").
 4. **All done for today** → explicit done state. Never a blank screen.
-5. **Missed windows** → dimmed, still tappable to log late. Never the hero.
+5. **Missed windows** → dimmed secondary row so they can still be logged late. Never the hero.
 
-Show **one** hero, plus at most **two** dimmed. That limit is what keeps the chart readable — seven labelled plates on screen collide with each other and with the map's own lettering.
-
-### The chart
-
-`index.html` carries the map inline (~150 KB). It is not fetched: the map *is* the page, and a fetch would flash an empty screen.
-
-- **The range is fixed.** Twelve summits, generated once. The land does not rearrange itself when tasks change.
-- **Position is rank, not clock.** Tasks sort by start time and take peaks in order, so scrolling south is moving later through the day. Big peaks are too far apart to hold an exact hour — a 06:00 and an 06:30 task would want the same latitude. Do not add an hour scale; it would claim a precision the layout does not have.
-- **There is no `anchor` field and no placement step.** Time decides the peak. Nothing to store, nothing to choose.
-- `PEAKS` in `app.js` mirrors the summits in the inline SVG. Regenerate one and you must regenerate the other.
-- The scroll box must match the viewBox aspect (`1200 / 2000`) exactly. Letterbox or crop it and every flag drifts off the summit it points at.
-
-Three label tiers, from the resolution order: the hero gets a full plate, the two dimmed get a name only, the rest are bare flags that name themselves on hover or focus. After layout a solver pushes overlapping plates apart and fades any map lettering still covered. Flags never leave their summits — only plates move.
+Show **one** task as the hero, plus at most **two** dimmed. More than that and this is just the Tasks page with worse spacing.
 
 ### Completion
 
-Double-click a flag:
+Double-click the hero task:
 
 1. Checkmark appears immediately. Task is marked done in `localStorage` right away.
-2. Fire rises from that summit, and the word **Dracarys** is spoken across the chart.
-3. The flag burns off the map and does not come back today.
+2. Fire rises from the base of the card in a wave, left to right, and the word **Dracarys** appears to the side.
+3. The task chars, burns away, and is removed from Home.
 
 No dragon. It was tried twice — heraldic line art and a hand drawing — and both read as flat cutouts sliding across the screen. Fire alone is better, and it is the part that always looked right.
 
-The fire is built from two layers of small SVG tongues at different blurs and opacities, screen-blended so they add light rather than occlude what is under them. Gradients and soft edges are what make it read as fire; solid shapes read as clipart.
+The fire is built from two layers of small SVG tongues at different blurs and opacities, screen-blended so they add light rather than occlude the card. Gradients and soft edges are what make it read as fire; solid shapes read as clipart.
 
 The animation is decorative and runs **after** the state change. If it stutters or is interrupted, the completion still stands. Never gate the data write on the animation finishing.
 
-Respect `prefers-reduced-motion`: skip the fire, fade the flag out instead. The word may stay, since it is text and not motion.
+Respect `prefers-reduced-motion`: skip the fire, fade the task out instead. The word may stay, since it is text and not motion.
 
 ---
 
@@ -252,7 +238,6 @@ Current artwork:
 |---|---|---|
 | Task icons (`ICONS` in `app.js`) | original | — |
 | Fire (`FLAME_SHAPES` / `pyreHTML` in `app.js`) | original | — |
-| The chart of Arcandia (inline in `index.html`) | original — coastline, relief, forests and lettering generated from seed `20260807`; nothing traced from any map, real or fictional | — |
 
 The word **Dracarys** is fine. A single invented word is not copyrightable, and this rule bars art, screenshots, logos, and sigils — not vocabulary. It is decorative text on a personal site, not branding on a product.
 
