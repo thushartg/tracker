@@ -411,6 +411,26 @@ a { color: var(--parchment); text-decoration: none; }
   50%, 100%  { opacity: 0; }
 }
 
+/* Speaking face. The jaw hinges at the ear. Timing is the whole thing here:
+   an even open-and-shut is chewing, so the amplitudes and the gaps between
+   them are uneven, and the loop ends on a held close — the breath between two
+   sentences. Rest is 0deg, so the drawn pose and the reduced-motion one are a
+   shut mouth. */
+.limb--jaw { transform-origin: 42px 50px; animation: speak 2.7s ease-in-out infinite; }
+@keyframes speak {
+  0%   { transform: rotate(0deg); }
+  7%   { transform: rotate(7deg); }
+  15%  { transform: rotate(1.5deg); }
+  24%  { transform: rotate(5.5deg); }
+  32%  { transform: rotate(1deg); }
+  43%  { transform: rotate(8deg); }
+  52%  { transform: rotate(2deg); }
+  60%  { transform: rotate(4.5deg); }
+  68%  { transform: rotate(1deg); }
+  76%  { transform: rotate(6deg); }
+  84%, 100% { transform: rotate(0deg); }
+}
+
 /* Key. Turning in a lock, back and forth about the bow. */
 .limb--keyTurn { transform-origin: 32px 30px; animation: key-turn 6.6s ease-in-out infinite; }
 @keyframes key-turn {

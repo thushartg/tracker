@@ -208,12 +208,12 @@ Original. Facets are `{ s, p }` — a shade in `0..1` and a flat list of `x,y` i
 
 Two sources, in `app.js`:
 
-- `SUBJECTS` — hand-authored. **All twelve icon keys** are drawn, plus `piano`, which has no icon key.
+- `SUBJECTS` — hand-authored. **All twelve icon keys** are drawn, plus `piano` and `speak`, which have no icon key and are reached by label alone.
 - `gemFacets(id)` — a generated faceted form seeded from the task id. Star-shaped around its centre by construction (core plus two rings), so facets tile without overlapping whatever the seed, and the same id always gives the same form. Now a **safety net**: with every icon key authored and `normalize()` forcing an unknown icon to `shield`, it should not be reached in normal use. Keep it — it is what guarantees `facetsFor()` never returns nothing.
 
 **How a task finds its subject** (`subjectFor`), in order:
 
-1. **Label**, but only for subjects the icon picker cannot express — `SUBJECT_WORDS` maps those to the words that reach them (`piano`; `monitor` via computer/leetcode/neetcode/lc/dsa/algo/interview/…). Word-boundary prefix match, case-insensitive, so "Decode audio" does not find `code`. The list is deliberately long on the coding side: the words a task actually gets named ("LC daily", "Neetcode 150", "Algo practice") are not the word the subject is called.
+1. **Label**, but only for subjects the icon picker cannot express — `SUBJECT_WORDS` maps those to the words that reach them (`piano`; `speak` via articulation/speech/voice/diction/…; `monitor` via computer/leetcode/neetcode/lc/dsa/algo/interview/…). Word-boundary prefix match, case-insensitive, so "Decode audio" does not find `code`. The list is deliberately long on the coding side: the words a task actually gets named ("LC daily", "Neetcode 150", "Algo practice") are not the word the subject is called.
 2. **Icon key**.
 3. Generated.
 
@@ -225,7 +225,9 @@ To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key
 
 A tag of `parent.child` **nests** — `legA.lower` puts the shin inside the thigh's group, so it turns about the knee *in the thigh's already-rotated space* and stays attached as the thigh swings. Two sibling groups cannot do this; the knee they turned about would not move, and a leg swinging rigid from the hip is a pendulum, which reads as dancing rather than running.
 
-**Every subject moves.** One characteristic part each — the thing that would actually move if the object were in front of you. The sun's rays turn, a page lifts off the book's spine, the tower's pennant flaps while its masonry does not, two tongues waver inside the flame's fixed silhouette, two piano keys are struck off the beat, the wine keeps its level as the goblet tips, steam rises off the bowl, the quill turns about its nib, a caret blinks on the monitor, the key turns about its bow. Blade and shield are planted point-down and sway from the point.
+**Every subject moves.** One characteristic part each — the thing that would actually move if the object were in front of you. The sun's rays turn, a page lifts off the book's spine, the tower's pennant flaps while its masonry does not, two tongues waver inside the flame's fixed silhouette, two piano keys are struck off the beat, the wine keeps its level as the goblet tips, steam rises off the bowl, the quill turns about its nib, a caret blinks on the monitor, the key turns about its bow, the speaking face works its jaw. Blade and shield are planted point-down and sway from the point.
+
+The speaking face is the one where the rig, not the drawing, does the work. The jaw hinges at the ear, because that is where a jaw hinges — which opens a seam along the *whole* edge from ear to lip rather than only at the mouth. The cheek carries a lobe hanging below that edge and covers it back to the mouth corner, so what is left to open is a mouth. Its timing is uneven on purpose: an even open-and-shut is chewing, and the loop ends on a held close, which is the breath between two sentences. It is drawn mouth-shut, so the still frame and the reduced-motion frame are a clean profile rather than a gape.
 
 Two rules hold this together. **Periods must not divide into each other** — round numbers drift into sync with each other and with the 5.2s facet loop, and two things ticking together is what reads as a screensaver. And **motion is a transform or a group opacity, never a filter or a glow**, so it composes with the per-facet idle loop underneath instead of replacing it.
 

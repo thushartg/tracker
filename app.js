@@ -577,6 +577,24 @@ const SUBJECTS = {
     f(.24, 26, 86, 74, 86, 72, 92, 28, 92)           // base, front lip
   ],
 
+  /* Profile facing right, mouth closed as drawn — so the still image, and the
+     reduced-motion one, is a clean silhouette rather than a gape.
+
+     The jaw is the only moving part and it hinges at the ear, which is where a
+     jaw hinges. That creates the problem the cheek solves: rotating about the
+     ear opens a seam along the *whole* edge from ear to lip, not just at the
+     mouth. So the cheek carries a lobe that hangs below that edge and covers it
+     back to about the mouth corner. What is left to open is a mouth. */
+  speak: () => [
+    f(.60, 46, 8, 68, 20, 69, 40, 42, 50, 20, 30),          // cranium
+    f(.34, 20, 30, 42, 50, 32, 60, 18, 46),                 // back of the skull, off the light
+    fp('jaw', .54, 42, 50, 60, 56, 77, 58, 76, 63, 72, 71, 50, 66),
+    f(.24, 30, 56, 54, 66, 56, 94, 28, 94),                 // neck, drawn over the jaw's hinge end
+    f(.84, 68, 20, 73, 33, 82, 49, 70, 53, 69, 40),         // brow and nose, into the light
+    f(.70, 42, 50, 69, 40, 70, 53, 77, 58, 60, 56, 48, 62), // cheek, overhanging the jaw
+    f(.06, 62, 34, 69, 33, 68, 38, 63, 38)                  // eye
+  ],
+
   /* Turns about the bow, which is the part a hand would hold. */
   key: () => tagAll('keyTurn', [
     ...annulus(32, 30, 18, 9, 8),                    // bow
@@ -634,6 +652,8 @@ function gemFacets(id) {
  */
 const SUBJECT_WORDS = {
   piano:   ['piano'],
+  speak:   ['articulation', 'articulate', 'speech', 'speak', 'talk', 'voice', 'vocal',
+            'diction', 'elocution', 'pronunciation', 'pronounce', 'toastmaster'],
   monitor: ['monitor', 'computer', 'laptop', 'leetcode', 'leet', 'neetcode', 'code',
             'coding', 'dsa', 'algo', 'lc', 'hackerrank', 'codeforces', 'interview']
 };
