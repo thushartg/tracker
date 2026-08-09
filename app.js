@@ -678,27 +678,6 @@ function subjectFor(task) {
 const facetsFor = (task) => (subjectFor(task) || (() => gemFacets(task.id)))();
 
 /**
- * Where a shard goes when the piece breaks: straight out from the centre, a
- * little further every fifth facet so the burst edge is ragged rather than a
- * clean expanding ring. Derived from the facet, so a shard always flies the way
- * it faces, and the same task always breaks the same way.
- */
-function shardOf(fc, i) {
-  let sx = 0, sy = 0;
-  const n = fc.p.length / 2;
-  for (let j = 0; j < fc.p.length; j += 2) { sx += fc.p[j]; sy += fc.p[j + 1]; }
-  let vx = sx / n - 50, vy = sy / n - 50;
-  let len = Math.hypot(vx, vy);
-  if (len < 0.001) { vx = Math.cos(i * 2.4); vy = Math.sin(i * 2.4); len = 1; }
-  const reach = 54 + (i % 5) * 7;
-  return {
-    x: (vx / len * reach).toFixed(1),
-    y: (vy / len * reach).toFixed(1),
-    r: ((i * 53) % 100) - 50
-  };
-}
-
-/**
  * Emits the facets, wrapping each consecutive run of same-tagged ones in a `<g>`.
  * The group carries the limb's movement; the polygons inside keep their own idle
  * and shatter animations, so the two compose instead of fighting.
@@ -726,11 +705,8 @@ function groupFacets(facets, pts) {
     }
     if (s && s !== sub) { sub = s; html += `<g class="limb limb--${top}-${sub}">`; }
 
-    const v = shardOf(fc, i);
-    /* --i drives the stagger for all three facet animations; the delay lives in
-       CSS so the breakup can stagger far tighter than the idle loop. */
-    html += `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}"
-      style="--i:${i};--dx:${v.x}px;--dy:${v.y}px;--rot:${v.r}deg"/>`;
+    /* --i staggers the idle loop, so the facets breathe out of phase. */
+    html += `<polygon points="${pts(fc.p)}" fill="${facetFill(fc.s)}" style="--i:${i}"/>`;
   });
 
   shut((sub ? 1 : 0) + (top ? 1 : 0));
@@ -880,17 +856,148 @@ function renderHome() {
   stage.innerHTML = pieceHTML(task, m, wd, stageIx, list.length);
 }
 
-/* Slightly shorter than the shatter actually runs, so the new piece starts
-   gathering while the last shards are still fading. A clean gap between the two
-   halves reads as a stutter; the overlap is what makes it feel continuous. */
-const SHATTER_MS = 520;
-/* Must outlast the slowest form: .58s plus a 12ms stagger over the busiest
-   subject (the 27-facet generated one) is .89s. Clearing the class early would
-   cut the last shards off mid-flight. */
-const FORM_MS = 980;
+/* -------------------------------------------------------------- the morph */
 
-/* Held while the piece is breaking up, so the 60-second refresh cannot render
-   over a half-scattered polygon. */
+/* Changing task rearranges the piece rather than replacing it. Nothing leaves
+   the frame and nothing appears from outside it: the facets already on screen
+   travel to where the next subject's facets are and take their shapes on the
+   way. It is the same set of pieces, laid out differently. */
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const MORPH_MS = 620;
+
+/* Slow at both ends, quickest in the middle — the facets should look carried,
+   not thrown. */
+const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2);
+
+const centroidOf = (p) => {
+  let x = 0, y = 0;
+  for (let i = 0; i < p.length; i += 2) { x += p[i]; y += p[i + 1]; }
+  return [x / (p.length / 2), y / (p.length / 2)];
+};
+
+/**
+ * `k` points spaced evenly along a polygon's perimeter.
+ *
+ * A triangle cannot be tweened into a hexagon vertex by vertex — there are not
+ * enough of them. Resampling both sides to the same count gives every point on
+ * one shape somewhere to go on the other, and spacing by arc length rather than
+ * by vertex keeps the extra points spread out instead of bunched on one edge.
+ */
+function resample(p, k) {
+  const v = [];
+  for (let i = 0; i < p.length; i += 2) v.push([p[i], p[i + 1]]);
+  const n = v.length, seg = [], upto = [];
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const a = v[i], b = v[(i + 1) % n];
+    upto.push(total);
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    seg.push(d);
+    total += d;
+  }
+  if (!total) return Array.from({ length: k }, () => v[0].slice());
+
+  const out = [];
+  for (let j = 0; j < k; j++) {
+    const t = (j / k) * total;
+    let i = 0;
+    while (i < n - 1 && upto[i + 1] <= t) i++;
+    const a = v[i], b = v[(i + 1) % n], u = seg[i] ? (t - upto[i]) / seg[i] : 0;
+    out.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]);
+  }
+  return out;
+}
+
+/**
+ * Rolls `b` round to whichever starting point sits closest to `a`'s.
+ *
+ * Both lists run the same way round the outline, but they do not start at the
+ * same corner. Pair them as they come and the shape turns itself inside out
+ * crossing over — every point taking the long way to a vertex that had one
+ * right beside it.
+ */
+function align(a, b) {
+  let best = 0, least = Infinity;
+  for (let r = 0; r < b.length; r++) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) {
+      const q = b[(i + r) % b.length];
+      d += (a[i][0] - q[0]) ** 2 + (a[i][1] - q[1]) ** 2;
+    }
+    if (d < least) { least = d; best = r; }
+  }
+  return b.slice(best).concat(b.slice(0, best));
+}
+
+/**
+ * One travelling facet per pair.
+ *
+ * The two subjects rarely have the same number of facets, and the leftovers are
+ * the whole problem — done carelessly they pop in or wink out, which is the
+ * disappearing this replaces. So a facet with no counterpart is given its
+ * *nearest* one instead: extra destinations split out of the facet already
+ * sitting there, extra sources merge into the one they are closest to. Both end
+ * up exactly on top of a facet with the same shape and fill, which is to say
+ * invisible, having got there by moving.
+ */
+function morphPairs(from, to) {
+  const cFrom = from.map((fc) => centroidOf(fc.p));
+  const cTo = to.map((fc) => centroidOf(fc.p));
+  const nearest = (c, cs) => {
+    let best = 0, least = Infinity;
+    cs.forEach((q, i) => {
+      const d = (q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2;
+      if (d < least) { least = d; best = i; }
+    });
+    return best;
+  };
+
+  const pairs = [];
+  for (let i = 0; i < Math.max(from.length, to.length); i++) {
+    const src = i < from.length ? from[i] : from[nearest(cTo[i], cFrom)];
+    const dst = i < to.length ? to[i] : to[nearest(cFrom[i], cTo)];
+    const k = Math.max(src.p.length, dst.p.length) / 2;
+    const a = resample(src.p, k);
+    pairs.push({ a, b: align(a, resample(dst.p, k)), s0: src.s, s1: dst.s });
+  }
+  return pairs;
+}
+
+/**
+ * Swaps the finished piece out for a flat set of travelling facets, runs them
+ * across, then puts the real one back. The last frame already draws the target
+ * shapes and fills, so the handover shows nothing — and because the real piece
+ * is only inserted at the end, its idle loops all start together rather than
+ * halfway through.
+ */
+function morphArt(from, to, real, label, done) {
+  const pairs = morphPairs(from, to);
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'poly poly--morph');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', label);
+
+  const nodes = pairs.map(() => svg.appendChild(document.createElementNS(SVG_NS, 'polygon')));
+  real.replaceWith(svg);
+
+  const started = performance.now();
+  const frame = (now) => {
+    const e = ease(Math.min(1, (now - started) / MORPH_MS));
+    pairs.forEach((pr, i) => {
+      nodes[i].setAttribute('points', pr.a.map(([x, y], j) =>
+        `${(x + (pr.b[j][0] - x) * e).toFixed(2)},${(y + (pr.b[j][1] - y) * e).toFixed(2)}`).join(' '));
+      nodes[i].setAttribute('fill', facetFill(pr.s0 + (pr.s1 - pr.s0) * e));
+    });
+    if (e < 1) requestAnimationFrame(frame); else done(svg);
+  };
+  requestAnimationFrame(frame);
+}
+
+/* Held while the piece is rearranging, so the 60-second refresh cannot render
+   over it mid-travel. */
 let swapping = false;
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -898,32 +1005,26 @@ const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').match
 /**
  * Wraps at both ends — the list is a loop, not a scroll.
  *
- * The outgoing polygon shatters, then the incoming one forms out of the same
- * scatter. The swap happens between the two, so what assembles is genuinely the
- * next task's facets and not a reshuffle of the old ones.
+ * The name, number and window change at once; only the artwork takes the 620ms,
+ * so the page answers the keypress immediately and the piece catches up.
  */
 function stepStage(delta) {
   const { list } = stageList();
   if (list.length < 2 || swapping) return;
 
-  const land = () => {
-    stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
-    renderHome();
-    const fresh = $('.poly');
-    if (fresh) fresh.classList.add('poly--form');
-    /* Drop the class so the idle loop takes back over. */
-    setTimeout(() => {
-      if (fresh) fresh.classList.remove('poly--form');
-      swapping = false;
-    }, FORM_MS);
-  };
+  const leaving = $('.poly') ? facetsFor(list[stageIx]) : null;
+  stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
+  const task = list[stageIx];
+  renderHome();
 
-  const poly = $('.poly');
-  if (!poly || reducedMotion()) { land(); return; }
+  const real = $('.poly');
+  if (!leaving || !real || reducedMotion()) return;
 
   swapping = true;
-  poly.classList.add('poly--shatter');
-  setTimeout(land, SHATTER_MS);
+  morphArt(leaving, facetsFor(task), real, task.label, (svg) => {
+    svg.replaceWith(real);
+    swapping = false;
+  });
 }
 
 /* ------------------------------------------------------------ kept today */

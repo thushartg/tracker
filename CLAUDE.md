@@ -221,7 +221,7 @@ The label pass is deliberately narrow. Every icon key is authored, so an icon al
 
 To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key it is picked up automatically; if not, give it an entry in `SUBJECT_WORDS`.
 
-**Moving parts.** A facet declared with `fp(tag, …)` instead of `f(…)` is tagged, and `tagAll(tag, facets)` tags a set already built — for the subjects that move as one piece, or whose parts come out of a loop. `groupFacets` wraps each consecutive run of same-tagged facets in a `<g class="limb limb--tag">`. The group carries the movement and the facets inside keep their own idle and shatter animations, so the two compose rather than fight. `transform-box: view-box` puts `transform-origin` in the artwork's own 0..100 coordinates, which is where the joints and pivots are. Limbs stop while the piece is shattering; a limb still swinging as its own shards fly apart reads as two things at once.
+**Moving parts.** A facet declared with `fp(tag, …)` instead of `f(…)` is tagged, and `tagAll(tag, facets)` tags a set already built — for the subjects that move as one piece, or whose parts come out of a loop. `groupFacets` wraps each consecutive run of same-tagged facets in a `<g class="limb limb--tag">`. The group carries the movement and the facets inside keep their own idle loop, so the two compose rather than fight. `transform-box: view-box` puts `transform-origin` in the artwork's own 0..100 coordinates, which is where the joints and pivots are.
 
 A tag of `parent.child` **nests** — `legA.lower` puts the shin inside the thigh's group, so it turns about the knee *in the thigh's already-rotated space* and stays attached as the thigh swings. Two sibling groups cannot do this; the knee they turned about would not move, and a leg swinging rigid from the hip is a pendulum, which reads as dancing rather than running.
 
@@ -235,9 +235,15 @@ The runner is the exception: it is a whole gait rather than a detail, and it is 
 
 Underneath all of it the idle loop is facet opacity, out of phase, nothing more. No glow, no filter. `prefers-reduced-motion` stops everything dead at full opacity — including the bob, which lives on `.poly` itself and so needs naming there explicitly.
 
-**Changing task shatters the piece.** The outgoing polygon breaks apart, then the incoming one gathers out of the same scatter. Each facet carries `--dx`/`--dy`/`--rot` from `shardOf()` — straight out from the centre, a little further every fifth facet so the burst edge is ragged. Derived from the facet, so a shard flies the way it faces and a task always breaks the same way.
+**Changing task rearranges the piece.** It does not break apart and it does not reassemble. **Nothing leaves the frame and nothing enters it** — the facets already on screen travel to where the next subject's facets are and take their shapes on the way. Same pieces, different layout. Do not replace this with a transition that scatters, fades, or slides one piece out for another.
 
-The swap happens **between** the two halves, so what assembles is genuinely the next task's facets rather than a reshuffle of the old ones. `swapping` is held across it so the 60-second refresh cannot render over a half-scattered polygon. Shards use `transform-box: fill-box` to turn about themselves, and user units so the burst scales with the artwork. Reduced motion skips straight to the swap.
+A polygon's geometry is not a CSS property, so `morphArt` rewrites `points` frame by frame on a rAF loop. Three things make that read as movement rather than as a glitch:
+
+- **`resample`** — a triangle cannot be tweened into a hexagon vertex by vertex; there are not enough of them. Both sides are resampled to the same count, spaced by *arc length* rather than by vertex, so the extra points spread along the outline instead of bunching on one edge.
+- **`align`** — both lists run the same way round the outline but do not start at the same corner. Pair them as they come and the shape turns itself inside out crossing over. `align` rolls one round to the closest starting point.
+- **`morphPairs`** — the two subjects rarely have the same facet count, and the leftovers are the whole problem: done carelessly they pop in or wink out, which is the disappearing this replaces. A facet with no counterpart gets its *nearest* one instead. Extra destinations split out of the facet already sitting there; extra sources merge into the one they are closest to. Both end exactly on top of a facet with the same shape and fill — invisible, but having got there by moving.
+
+The name, number and window swap **at once**; only the artwork takes the 620ms, so the page answers the keypress immediately and the piece catches up. The morph runs on a flat SVG with no limb groups, so limbs and the bob have nothing to attach to while it travels and need no suppressing. `swapping` is held across it so the 60-second refresh cannot render over a piece mid-travel. Reduced motion skips straight to the new arrangement.
 
 **No borrowed art, ever.** The style is common to low-poly illustration; the shapes here are authored from scratch. Do not trace, import, or adapt an existing illustration — see Legal.
 

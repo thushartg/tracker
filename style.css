@@ -183,15 +183,11 @@ a { color: var(--parchment); text-decoration: none; }
 /* The loop: facets breathe out of phase, so the form never sits quite still.
    Opacity only — no glow, no filter. */
 .poly polygon {
-  /* fill-box so each shard turns about itself. Lengths stay in user units, so
-     the burst scales with the artwork instead of being pinned to pixels. */
-  transform-box: fill-box;
-  transform-origin: center;
   animation: facet 5.2s ease-in-out infinite;
   animation-delay: calc(var(--i) * .09s);
 }
-/* Starts at full, because that is where `form` leaves off. Starting at .82 made
-   every facet dip the instant the transition handed back to the loop. */
+/* Starts at full, because that is where a morph leaves off. Starting at .82
+   made every facet dip the instant the transition handed back to the loop. */
 @keyframes facet {
   0%, 100% { opacity: 1; }
   50%      { opacity: .82; }
@@ -288,13 +284,9 @@ a { color: var(--parchment); text-decoration: none; }
   0%, 100% { transform: translateY(-1.8%); }  /* legs split, weight off both */
   50%      { transform: translateY(0); }      /* mid-stance, weight on one */
 }
-.poly--shatter:has(.limb),
-.poly--form:has(.limb) { animation: none; }
-
-/* A limb still swinging while its own shards fly apart reads as two things
-   happening at once. */
-.poly--shatter .limb,
-.poly--form .limb { animation: none; }
+/* The morph runs on a flat SVG with no limb groups in it at all, so the bob and
+   the limbs simply have nothing to attach to while a piece is rearranging.
+   There is no class to suppress them with, and none needed. */
 
 /* ---------------------------------------------------------------------------
    Every other subject moves too. One characteristic part each — the thing that
@@ -438,30 +430,15 @@ a { color: var(--parchment); text-decoration: none; }
   50%      { transform: rotate(7deg); }
 }
 
-/* Changing task: the piece breaks apart, then the next one gathers out of the
-   same scatter. Both read --dx/--dy/--rot, set per facet in polyHTML, so a
-   shard leaves along the line it arrives on. */
-@keyframes shatter {
-  from { transform: none; opacity: 1; }
-  to   { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
-}
-@keyframes form {
-  from { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
-  to   { transform: none; opacity: 1; }
-}
+/* Changing task rearranges the piece in place — the facets travel to the next
+   subject's layout rather than scattering and being replaced. That is all done
+   in `morphArt`, by rewriting `points` frame by frame; a polygon's geometry is
+   not a CSS property, so there is nothing here to animate.
 
-/* After .poly polygon, so these win the equal-specificity tie and replace the
-   idle loop outright. The stagger is far tighter than the loop's. */
-.poly--shatter polygon {
-  /* Holds, then lets go — a shard that leaves at full speed reads as a cut. */
-  animation: shatter .44s cubic-bezier(.55, 0, .85, .35) forwards;
-  animation-delay: calc(var(--i) * .012s);
-}
-.poly--form polygon {
-  /* Arrives quickly, settles slowly. */
-  animation: form .58s cubic-bezier(.16, .84, .34, 1) backwards;
-  animation-delay: calc(var(--i) * .012s);
-}
+   After `.poly polygon`, so it wins the equal-specificity tie: the idle breath
+   is held while they travel. Two kinds of movement at once on the same facet
+   reads as neither. */
+.poly--morph polygon { animation: none; opacity: 1; }
 
 .piece__bar {
   display: flex; align-items: center; gap: var(--s3);
@@ -520,9 +497,7 @@ a { color: var(--parchment); text-decoration: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .poly,
-  .poly polygon,
-  .poly--shatter polygon,
-  .poly--form polygon { animation: none; opacity: 1; transform: none; }
+  .poly polygon { animation: none; opacity: 1; transform: none; }
   .limb { animation: none; transform: none; }
 }
 
