@@ -279,8 +279,11 @@ a { color: var(--parchment); text-decoration: none; }
    up when they are at full split and carrying nothing, down as one comes under
    the body and takes the weight. Half this cycle is one stride, so its 0% must
    line up with the limbs' 0% and 50% — the two split poses. Run it the other way
-   round and the figure sinks as it leaps, which is the gliding, boneless look. */
-.poly:has(.limb) { animation: bob .36s ease-in-out infinite; }
+   round and the figure sinks as it leaps, which is the gliding, boneless look.
+
+   Hooked on `.limb--legA`, not `.limb` — every subject has moving parts now,
+   and a bobbing goblet is a spilled one. */
+.poly:has(.limb--legA) { animation: bob .36s ease-in-out infinite; }
 @keyframes bob {
   0%, 100% { transform: translateY(-1.8%); }  /* legs split, weight off both */
   50%      { transform: translateY(0); }      /* mid-stance, weight on one */
@@ -292,6 +295,128 @@ a { color: var(--parchment); text-decoration: none; }
    happening at once. */
 .poly--shatter .limb,
 .poly--form .limb { animation: none; }
+
+/* ---------------------------------------------------------------------------
+   Every other subject moves too. One characteristic part each — the thing that
+   would actually move if the object were in front of you — held slow and small.
+   The runner is the exception above: it is a whole gait, not a detail.
+
+   Periods are deliberately unrelated (2.3s, 3.4s, 5.8s, 11s...). Round numbers
+   drift into sync with each other and with the 5.2s facet loop, and two things
+   ticking together is the one thing that reads as a screensaver.
+
+   Everything here is a transform or a group opacity, so it composes with the
+   per-facet idle loop underneath rather than replacing it. */
+
+/* Sun. Nine rays, so a ninth of a turn is 40deg and the loop closes on itself:
+   it reads as one continuous rotation, never as a cycle restarting. */
+.limb--rays { transform-origin: 50px 50px; animation: sun-turn 34s linear infinite; }
+@keyframes sun-turn { to { transform: rotate(40deg); } }
+
+/* Moon. Tips the way a thing hanging in the dark does. */
+.limb--moonTip { transform-origin: 50px 50px; animation: moon-tip 11s ease-in-out infinite; }
+@keyframes moon-tip {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(4deg); }
+}
+
+/* Book. The leaf lifts and settles. Narrowing toward the spine is what a page
+   turning does in profile — rotating it would only tilt the whole leaf. It
+   holds still for most of the loop, because a page that turns continuously is
+   a fan. */
+.limb--leaf { transform-origin: 51px 48px; animation: leaf-turn 6.4s ease-in-out infinite; }
+@keyframes leaf-turn {
+  0%, 70%, 100% { transform: scaleX(1); }
+  85%           { transform: scaleX(.78); }
+}
+
+/* Blade and shield are both planted point-down, so both swing from the point
+   rather than the middle. The shield is the heavier of the two. */
+.limb--blade  { transform-origin: 50px 92px; animation: blade-sway  7.6s ease-in-out infinite; }
+.limb--shield { transform-origin: 50px 81px; animation: shield-rock 9.2s ease-in-out infinite; }
+@keyframes blade-sway {
+  0%, 100% { transform: rotate(-2.4deg); }
+  50%      { transform: rotate(2.4deg); }
+}
+@keyframes shield-rock {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50%      { transform: rotate(1.6deg); }
+}
+
+/* Tower. The pennant flaps; the masonry does not. Flapping is scaleX about the
+   mast — the flag turns edge-on and back, which is the real motion. */
+.limb--pennant { transform-origin: 51px 7px; animation: pennant 2.3s ease-in-out infinite; }
+@keyframes pennant {
+  0%, 100% { transform: scaleX(1)   translateY(0); }
+  35%      { transform: scaleX(.62) translateY(.5px); }
+  70%      { transform: scaleX(.88) translateY(-.4px); }
+}
+
+/* Flame. Two tongues wavering inside a silhouette that holds still, at rates
+   that do not divide into each other, or the whole thing pulses like a heart. */
+.limb--flameMid  { transform-origin: 50px 74px; animation: waver-a 1.9s ease-in-out infinite; }
+.limb--flameCore { transform-origin: 50px 71px; animation: waver-b 1.3s ease-in-out infinite; }
+@keyframes waver-a {
+  0%, 100% { transform: scaleY(1)    skewX(0deg); }
+  30%      { transform: scaleY(1.07) skewX(-3deg); }
+  65%      { transform: scaleY(.95)  skewX(2.4deg); }
+}
+@keyframes waver-b {
+  0%, 100% { transform: scaleY(1)    skewX(0deg); }
+  40%      { transform: scaleY(1.12) skewX(3.4deg); }
+  75%      { transform: scaleY(.93)  skewX(-2deg); }
+}
+
+/* Piano. Two keys struck off the beat. They travel about a unit — a key you can
+   watch descend is a trapdoor; the strike should be quicker than the eye. */
+.limb--keyA { animation: press 3.1s ease-out infinite; }
+.limb--keyB { animation: press 3.1s ease-out infinite 1.15s; }
+@keyframes press {
+  0%, 10%, 100% { transform: translateY(0); }
+  3%            { transform: translateY(1.3px); }
+}
+
+/* Goblet. The cup tips and the wine keeps its own level — turning the surface
+   about the bowl's centre is the whole trick. */
+.limb--wine { transform-origin: 50px 28px; animation: slosh 5.8s ease-in-out infinite; }
+@keyframes slosh {
+  0%, 100% { transform: rotate(-2.6deg); }
+  50%      { transform: rotate(2.6deg); }
+}
+
+/* Bowl. Steam: rises, thins, gone. Group opacity multiplies with the facet
+   loop underneath instead of overriding it, which is what the split is for.
+   The second wisp is half a period behind so they do not pump together. */
+.limb--steamA { animation: rise 4.2s ease-out infinite; }
+.limb--steamB { animation: rise 4.2s ease-out infinite 2.1s; }
+@keyframes rise {
+  0%   { transform: translateY(3px)  scaleY(.7);  opacity: 0; }
+  30%  { opacity: .9; }
+  100% { transform: translateY(-9px) scaleY(1.3); opacity: 0; }
+}
+
+/* Quill. Writing works from the nib, so that is where it turns. */
+.limb--quill { transform-origin: 15px 85px; animation: write 3.4s ease-in-out infinite; }
+@keyframes write {
+  0%, 100% { transform: rotate(0deg)    translateX(0); }
+  25%      { transform: rotate(2.2deg)  translateX(-1px); }
+  60%      { transform: rotate(-1.6deg) translateX(1.4px); }
+}
+
+/* Monitor. A caret, and nothing else — it is the one mark on a screen that says
+   someone is working here. Snapped, not faded: carets do not dissolve. */
+.limb--caret { animation: caret 1.06s linear infinite; }
+@keyframes caret {
+  0%, 49.9%  { opacity: 1; }
+  50%, 100%  { opacity: 0; }
+}
+
+/* Key. Turning in a lock, back and forth about the bow. */
+.limb--keyTurn { transform-origin: 32px 30px; animation: key-turn 6.6s ease-in-out infinite; }
+@keyframes key-turn {
+  0%, 100% { transform: rotate(-7deg); }
+  50%      { transform: rotate(7deg); }
+}
 
 /* Changing task: the piece breaks apart, then the next one gathers out of the
    same scatter. Both read --dx/--dy/--rot, set per facet in polyHTML, so a

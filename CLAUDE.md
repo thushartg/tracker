@@ -213,7 +213,7 @@ Two sources, in `app.js`:
 
 **How a task finds its subject** (`subjectFor`), in order:
 
-1. **Label**, but only for subjects the icon picker cannot express — `SUBJECT_WORDS` maps those to the words that reach them (`piano`; `monitor` via computer/leetcode/code/…). Word-boundary prefix match, case-insensitive, so "Decode audio" does not find `code`.
+1. **Label**, but only for subjects the icon picker cannot express — `SUBJECT_WORDS` maps those to the words that reach them (`piano`; `monitor` via computer/leetcode/neetcode/lc/dsa/algo/interview/…). Word-boundary prefix match, case-insensitive, so "Decode audio" does not find `code`. The list is deliberately long on the coding side: the words a task actually gets named ("LC daily", "Neetcode 150", "Algo practice") are not the word the subject is called.
 2. **Icon key**.
 3. Generated.
 
@@ -221,9 +221,17 @@ The label pass is deliberately narrow. Every icon key is authored, so an icon al
 
 To add a subject: write it into `SUBJECTS`. If it shares a name with an icon key it is picked up automatically; if not, give it an entry in `SUBJECT_WORDS`.
 
-**Moving parts.** A facet declared with `fp(tag, …)` instead of `f(…)` is tagged; `groupFacets` wraps each consecutive run of same-tagged facets in a `<g class="limb limb--tag">`. The group carries the movement and the facets inside keep their own idle and shatter animations, so the two compose rather than fight. A tag of `parent.child` **nests** — `legA.lower` puts the shin inside the thigh's group, so it turns about the knee *in the thigh's already-rotated space* and stays attached as the thigh swings. Two sibling groups cannot do this; the knee they turned about would not move, and a leg swinging rigid from the hip is a pendulum, which reads as dancing rather than running. The runner uses it for four limbs, swinging about shoulders and hips — `transform-box: view-box` puts `transform-origin` in the artwork's own 0..100 coordinates, which is where those joints are. Limbs stop while the piece is shattering; a limb still swinging as its own shards fly apart reads as two things at once.
+**Moving parts.** A facet declared with `fp(tag, …)` instead of `f(…)` is tagged, and `tagAll(tag, facets)` tags a set already built — for the subjects that move as one piece, or whose parts come out of a loop. `groupFacets` wraps each consecutive run of same-tagged facets in a `<g class="limb limb--tag">`. The group carries the movement and the facets inside keep their own idle and shatter animations, so the two compose rather than fight. `transform-box: view-box` puts `transform-origin` in the artwork's own 0..100 coordinates, which is where the joints and pivots are. Limbs stop while the piece is shattering; a limb still swinging as its own shards fly apart reads as two things at once.
 
-The idle loop is facet opacity, out of phase, nothing more. No glow, no filter. `prefers-reduced-motion` stops it dead at full opacity.
+A tag of `parent.child` **nests** — `legA.lower` puts the shin inside the thigh's group, so it turns about the knee *in the thigh's already-rotated space* and stays attached as the thigh swings. Two sibling groups cannot do this; the knee they turned about would not move, and a leg swinging rigid from the hip is a pendulum, which reads as dancing rather than running.
+
+**Every subject moves.** One characteristic part each — the thing that would actually move if the object were in front of you. The sun's rays turn, a page lifts off the book's spine, the tower's pennant flaps while its masonry does not, two tongues waver inside the flame's fixed silhouette, two piano keys are struck off the beat, the wine keeps its level as the goblet tips, steam rises off the bowl, the quill turns about its nib, a caret blinks on the monitor, the key turns about its bow. Blade and shield are planted point-down and sway from the point.
+
+Two rules hold this together. **Periods must not divide into each other** — round numbers drift into sync with each other and with the 5.2s facet loop, and two things ticking together is what reads as a screensaver. And **motion is a transform or a group opacity, never a filter or a glow**, so it composes with the per-facet idle loop underneath instead of replacing it.
+
+The runner is the exception: it is a whole gait rather than a detail, and it is the only subject with a body bob. That bob hangs off `.limb--legA`, not `.limb` — hooked on `.limb` it would apply to every subject, and a bobbing goblet is a spilled one.
+
+Underneath all of it the idle loop is facet opacity, out of phase, nothing more. No glow, no filter. `prefers-reduced-motion` stops everything dead at full opacity — including the bob, which lives on `.poly` itself and so needs naming there explicitly.
 
 **Changing task shatters the piece.** The outgoing polygon breaks apart, then the incoming one gathers out of the same scatter. Each facet carries `--dx`/`--dy`/`--rot` from `shardOf()` — straight out from the centre, a little further every fifth facet so the burst edge is ragged. Derived from the facet, so a shard flies the way it faces and a task always breaks the same way.
 

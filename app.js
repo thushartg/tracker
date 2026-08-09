@@ -355,6 +355,10 @@ const f = (s, ...p) => ({ s, p });
 /** Same, but tagged — consecutive facets sharing a tag become one moving limb. */
 const fp = (k, s, ...p) => ({ s, p, k });
 
+/** Tags facets that are already built, for the subjects that move as one piece
+    or whose parts come out of a loop. Same thing `fp` does, applied after. */
+const tagAll = (k, facets) => facets.map((fc) => ({ ...fc, k }));
+
 /* Light from the upper left, so shading stays consistent across every subject. */
 const litBy = (x, y) => Math.max(0, Math.min(1, 0.58 - ((x - 50) / 100 + (y - 50) / 100)));
 
@@ -404,7 +408,7 @@ const SUBJECTS = {
       const [x1, y1] = p(a - w, 22), [x2, y2] = p(a + w, 22), [x3, y3] = p(a, 41);
       rays.push(f(litBy(x3, y3) * 0.9 + 0.08, x1, y1, x2, y2, x3, y3));
     }
-    return [...rays, ...core];
+    return [...tagAll('rays', rays), ...core];
   },
 
   moon: () => {
@@ -417,7 +421,7 @@ const SUBJECTS = {
       const [ax, ay] = o(a), [bx, by] = o(b), [cx2, cy2] = t(a), [dx, dy] = t(b);
       out.push(f(litBy(ax, ay), ax, ay, bx, by, dx, dy, cx2, cy2));
     }
-    return out;
+    return tagAll('moonTip', out);
   },
 
   /* Mid-stride, facing right. Every joint is a real point — each segment runs
@@ -454,7 +458,7 @@ const SUBJECTS = {
 
   book: () => [
     f(.95, 24, 52, 49, 45, 49, 51, 22, 58),          // left leaf
-    f(.72, 51, 45, 76, 52, 78, 58, 51, 51),          // right leaf
+    fp('leaf', .72, 51, 45, 76, 52, 78, 58, 51, 51), // right leaf — this is the one that turns
     f(.66, 22, 58, 49, 51, 49, 71, 20, 73),          // left page
     f(.86, 51, 51, 78, 58, 80, 73, 51, 71),          // right page
     f(.42, 20, 73, 49, 71, 49, 78, 18, 80),          // left cover
@@ -462,15 +466,21 @@ const SUBJECTS = {
     f(.32, 49, 45, 51, 45, 51, 78, 49, 78)           // spine
   ],
 
-  blade: () => [
+  /* Point-down, so it sways from the pommel. */
+  blade: () => tagAll('blade', [
     f(.94, 50, 8, 57, 27, 53, 60, 50, 60),           // lit edge
     f(.58, 50, 8, 43, 27, 47, 60, 50, 60),           // shaded edge
     f(.40, 35, 60, 65, 60, 64, 67, 36, 67),          // guard
     f(.56, 46, 67, 54, 67, 53, 85, 47, 85),          // grip
     f(.78, 44, 85, 56, 85, 52, 92, 48, 92)           // pommel
-  ],
+  ]),
 
+  /* The masonry does not move — a swaying tower is a collapsing one. The
+     pennant is here to carry the motion, and the mast is drawn before the roof
+     so the roof covers where it enters. */
   tower: () => [
+    f(.30, 49, 2, 51, 2, 51, 14, 49, 14),            // mast
+    fp('pennant', .88, 51, 3, 66, 7, 51, 12),        // pennant
     f(.90, 50, 10, 71, 34, 29, 34),                  // roof
     f(.64, 33, 34, 50, 34, 50, 82, 35, 82),          // lit wall
     f(.44, 50, 34, 67, 34, 65, 82, 50, 82),          // shaded wall
@@ -478,10 +488,12 @@ const SUBJECTS = {
     f(.26, 44, 60, 56, 60, 56, 82, 44, 82)           // door
   ],
 
+  /* The outer silhouette holds still and the two tongues waver inside it. A
+     flame whose outline moves reads as a flag. */
   flame: () => [
-    f(.50, 50, 10, 67, 44, 60, 74, 40, 74, 33, 44),  // outer
-    f(.78, 50, 23, 61, 48, 56, 71, 44, 71, 39, 48),  // mid
-    f(1.0, 50, 40, 58, 58, 50, 71, 42, 58)           // core
+    f(.50, 50, 10, 67, 44, 60, 74, 40, 74, 33, 44),      // outer
+    fp('flameMid', .78, 50, 23, 61, 48, 56, 71, 44, 71, 39, 48),
+    fp('flameCore', 1.0, 50, 40, 58, 58, 50, 71, 42, 58)
   ],
 
   /* A keyboard, not a whole instrument — the keys are the part that reads as
@@ -492,9 +504,14 @@ const SUBJECTS = {
       f(.52, 8, 29, 92, 29, 96, 41, 4, 41)           // key bed, seen from above
     ];
     const n = 8, x0 = 4, x1 = 96, w = (x1 - x0) / n;
+    /* Two of the eight are struck, a beat apart. Tagging them individually is
+       enough to split them out of the run — same tag would fuse them. */
+    const struck = { 2: 'keyA', 5: 'keyB' };
     for (let i = 0; i < n; i++) {
       const l = x0 + i * w + 0.7, r = x0 + (i + 1) * w - 0.7;
-      out.push(f(i % 2 ? .90 : .98, l, 41, r, 41, r, 82, l, 82));
+      const s = i % 2 ? .90 : .98;
+      out.push(struck[i] ? fp(struck[i], s, l, 41, r, 41, r, 82, l, 82)
+                         : f(s, l, 41, r, 41, r, 82, l, 82));
     }
     for (const i of [0, 1, 3, 4, 5]) {              // the 2-then-3 black-key group
       const c = x0 + (i + 1) * w, b = w * 0.33;
@@ -504,16 +521,17 @@ const SUBJECTS = {
     return out;
   },
 
-  shield: () => [
+  /* Also point-down, but heavier than the blade, so it rocks slower. */
+  shield: () => tagAll('shield', [
     f(.86, 50, 9, 82, 21, 79, 52, 50, 81),           // lit half
     f(.52, 50, 9, 18, 21, 21, 52, 50, 81),           // shaded half
     f(1.0, 50, 29, 67, 40, 50, 53, 33, 40)           // charge
-  ],
+  ]),
 
   goblet: () => [
     f(.84, 30, 20, 70, 20, 62, 45, 38, 45),          // bowl
     f(.54, 50, 20, 70, 20, 62, 45, 50, 45),          // bowl, shaded side
-    f(1.0, 33, 25, 67, 25, 65, 31, 35, 31),          // the wine
+    fp('wine', 1.0, 33, 25, 67, 25, 65, 31, 35, 31), // the wine, which keeps its own level
     f(.60, 46, 45, 54, 45, 54, 72, 46, 72),          // stem
     f(.42, 34, 72, 66, 72, 71, 81, 29, 81)           // foot
   ],
@@ -523,8 +541,8 @@ const SUBJECTS = {
     f(.62, 20, 51, 50, 51, 50, 77, 33, 73),          // body
     f(.40, 50, 51, 80, 51, 67, 73, 50, 77),          // body, shaded side
     f(.28, 41, 76, 59, 76, 57, 83, 43, 83),          // base
-    f(.80, 43, 31, 47, 20, 51, 33),                  // steam
-    f(.66, 55, 28, 59, 17, 63, 30)
+    fp('steamA', .80, 43, 31, 47, 20, 51, 33),       // steam, two wisps off the beat
+    fp('steamB', .66, 55, 28, 59, 17, 63, 30)
   ],
 
   /* A feather: barbs stepped along a spine, spread by a sine so the vane is
@@ -541,7 +559,7 @@ const SUBJECTS = {
       out.push(f(.58 - t * .16, px, py, qx, qy, px + s * .56, py + s * .74));
     }
     out.push(f(1.0, 27, 69, 33, 65, 15, 85));        // nib
-    return out;
+    return tagAll('quill', out);                     // it works from the nib, so it turns there
   },
 
   monitor: () => [
@@ -553,18 +571,20 @@ const SUBJECTS = {
     f(.12, 30, 34, 66, 34, 66, 38, 30, 38),
     f(.12, 30, 42, 52, 42, 52, 46, 30, 46),
     f(.12, 24, 50, 44, 50, 44, 54, 24, 54),
+    fp('caret', .95, 46, 50, 50, 50, 50, 54, 46, 54),// caret, sat at the end of the last line
     f(.42, 44, 64, 56, 64, 58, 78, 42, 78),          // neck
     f(.34, 32, 78, 68, 78, 74, 86, 26, 86),          // base
     f(.24, 26, 86, 74, 86, 72, 92, 28, 92)           // base, front lip
   ],
 
-  key: () => [
+  /* Turns about the bow, which is the part a hand would hold. */
+  key: () => tagAll('keyTurn', [
     ...annulus(32, 30, 18, 9, 8),                    // bow
     f(.04, 32, 21, 41, 30, 32, 39, 23, 30),          // its hole
     f(.62, 29, 46, 39, 46, 39, 86, 29, 86),          // shaft
     f(.78, 39, 66, 51, 66, 51, 72, 39, 72),          // wards
     f(.50, 39, 78, 48, 78, 48, 84, 39, 84)
-  ]
+  ])
 };
 
 /* --- generated fallback ------------------------------------------------ */
@@ -614,7 +634,8 @@ function gemFacets(id) {
  */
 const SUBJECT_WORDS = {
   piano:   ['piano'],
-  monitor: ['monitor', 'computer', 'laptop', 'leetcode', 'leet', 'code', 'coding', 'dsa']
+  monitor: ['monitor', 'computer', 'laptop', 'leetcode', 'leet', 'neetcode', 'code',
+            'coding', 'dsa', 'algo', 'lc', 'hackerrank', 'codeforces', 'interview']
 };
 
 /**
