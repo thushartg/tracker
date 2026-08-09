@@ -420,23 +420,36 @@ const SUBJECTS = {
     return out;
   },
 
-  /* Mid-stride, facing right. Limbs are two segments each and share their
-     joint vertices, so the figure holds together instead of reading as loose
-     blocks. Depth does the shading — near limbs light, far limbs dark. */
+  /* Mid-stride, facing right. Every joint is a real point — each segment runs
+     from its parent joint to its own, at a stated angle and length, so the
+     figure articulates instead of being a pile of quads that happen to touch.
+     Hips (55,52)/(47,53), shoulders (58,27)/(51,28), knees (47,67)/(55.5,67.7),
+     which is exactly where the CSS puts each limb's transform-origin.
+
+     Far limbs come first so the near ones paint over them — the shading says
+     which side a limb is on, and the stacking has to agree with it.
+
+     Each shin starts 3 units *above* its knee. Two quads hinged at a shared
+     edge tear open a wedge as they fold, and the knee folds 70deg; the overhang
+     sweeps round the joint and keeps it covered instead.
+
+     The pose is contralateral with the *near arm forward*, not back. Either
+     phase is anatomically fine, but this one keeps the far arm swung clear
+     behind the torso rather than folded across it, where it would vanish. */
   run: () => [
-    f(.88, 60, 7, 67, 11, 67, 19, 60, 23, 53, 19, 53, 11),      // head
-    f(.60, 50, 27, 64, 25, 57, 53, 44, 55),                     // torso
-    f(.76, 58, 26, 64, 25, 57, 53),                             // chest, to the light
-    fp('armA', .74, 63.4, 24.4, 78.4, 32.4, 75.6, 37.6, 60.6, 29.6),  // lead upper arm
-    fp('armA', .82, 74.6, 33.2, 83.6, 21.2, 88.4, 24.8, 79.4, 36.8),  // lead forearm
-    fp('armB', .38, 49, 25.8, 53, 30.2, 40, 42.2, 36, 37.8),          // trailing upper arm
-    fp('armB', .44, 40.1, 37.9, 30.1, 27.9, 25.9, 32.1, 35.9, 42.1),  // trailing forearm
-    fp('legA', .68, 52, 51, 58, 50, 74, 57, 69, 62),                  // lead thigh
-    fp('legA.lower', .72, 69, 58, 74, 57, 76, 76, 70, 77),            // lead shin, below the knee
-    fp('legA.lower', .84, 70, 74, 76, 76, 80, 82, 69, 81),            // lead foot
-    fp('legB', .40, 44, 52, 50, 53, 38, 70, 32, 66),                  // trailing thigh
-    fp('legB.lower', .46, 32, 66, 38, 70, 30, 86, 24, 82),            // trailing shin
-    fp('legB.lower', .34, 24, 82, 30, 86, 20, 90, 16, 86)             // trailing foot
+    fp('legB', 0.40, 43.7, 54.9, 53.1, 69.1, 57.9, 66.3, 50.3, 51.1),       // far thigh, driving forward
+    fp('legB.lower', 0.46, 52.3, 65.1, 55.9, 84.8, 59.8, 84.3, 57.9, 64.4), // far shin
+    fp('legB.lower', 0.34, 57.8, 86.9, 65.8, 86.3, 65.9, 83.3, 57.9, 82.3), // far foot, flat to the ground
+    fp('armB', 0.38, 48.3, 26.7, 43.8, 37.8, 47.7, 39.7, 53.7, 29.3),       // far upper arm, swung back
+    fp('armB', 0.44, 43.7, 39.5, 47.8, 49.7, 50.8, 48.7, 47.8, 38.1),       // far forearm
+    f(0.88, 60, 7, 67, 11, 67, 19, 60, 23, 53, 19, 53, 11),                 // head
+    f(0.60, 50, 27, 64, 25, 57, 53, 44, 55),                                // torso
+    f(0.76, 58, 26, 64, 25, 57, 53),                                        // chest, to the light
+    fp('legA', 0.68, 51.5, 50.1, 44.4, 65.6, 49.7, 68.4, 58.5, 53.9),       // near thigh, trailing
+    fp('legA.lower', 0.72, 47.6, 62.8, 32.2, 75.6, 34.7, 78.9, 51.2, 67.6), // near shin, below the knee
+    fp('legA.lower', 0.84, 31.2, 76.3, 28.8, 84.0, 31.8, 85.2, 35.7, 78.2), // near foot, toed off
+    fp('armA', 0.74, 55.1, 28.4, 61.1, 38.8, 65.4, 36.7, 60.9, 25.6),       // near upper arm, forward
+    fp('armA', 0.82, 64.5, 39.8, 73.6, 33.7, 71.8, 30.6, 62.0, 35.7)        // near forearm
   ],
 
   book: () => [

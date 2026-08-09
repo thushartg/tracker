@@ -204,45 +204,86 @@ a { color: var(--parchment); text-decoration: none; }
 .limb { transform-box: view-box; }
 
 /* .72s per full cycle. At 1s it read as a march; a runner's cadence is quicker
-   than the eye expects. Arms swing less than legs, or it turns into flailing. */
-.limb--armA { transform-origin: 58px 27px;   animation: arm-a   .72s ease-in-out infinite; }
-.limb--armB { transform-origin: 51px 28px;   animation: arm-b   .72s ease-in-out infinite; }
-.limb--legA { transform-origin: 55px 52px;   animation: hip-a   .72s ease-in-out infinite; }
-.limb--legB { transform-origin: 47px 53px;   animation: hip-b   .72s ease-in-out infinite; }
+   than the eye expects. Arms sweep 52deg, legs 58deg — the arms must swing the
+   lesser of the two, or it turns into flailing.
+
+   `linear`, not `ease-in-out`. With four keyframes, easing decelerates into
+   every one of them, and four dead stops per cycle is a jig. A gait has no
+   stops in it; the keyframes themselves carry the timing. */
+.limb--armA { transform-origin: 58px 27px;   animation: arm-a   .72s linear infinite; }
+.limb--armB { transform-origin: 51px 28px;   animation: arm-b   .72s linear infinite; }
+.limb--legA { transform-origin: 55px 52px;   animation: hip-a   .72s linear infinite; }
+.limb--legB { transform-origin: 47px 53px;   animation: hip-b   .72s linear infinite; }
 
 /* The knee is the whole difference. A leg that swings rigid from the hip is a
    pendulum, and a pendulum reads as dancing. It folds hard through the recovery
    and extends as the foot comes down. Origins are the knees. */
-.limb--legA-lower { transform-origin: 71.5px 59.5px; animation: knee-a .72s ease-in-out infinite; }
-.limb--legB-lower { transform-origin: 35px 68px;     animation: knee-b .72s ease-in-out infinite; }
+.limb--legA-lower { transform-origin: 47px 67px;     animation: knee-a .72s linear infinite; }
+.limb--legB-lower { transform-origin: 55.5px 67.7px; animation: knee-b .72s linear infinite; }
 
-/* Negative swings the foot forward, positive back. */
-@keyframes hip-a { 0%, 100% { transform: rotate(17deg); }  50% { transform: rotate(-17deg); } }
-@keyframes hip-b { 0%, 100% { transform: rotate(-17deg); } 50% { transform: rotate(17deg); } }
-@keyframes arm-a { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
-@keyframes arm-b { 0%, 100% { transform: rotate(13deg); }  50% { transform: rotate(-13deg); } }
+/* Rotations are RELATIVE to the drawn pose, which is itself mid-stride: the far
+   leg reaching forward 30deg, the near leg trailing 28deg. So every keyframe is
+   `drawn angle - wanted angle`, and 0deg means "as drawn", not "hanging down".
+   Getting this wrong is what was broken — keyframes centred on zero swung each
+   leg about the split it was already drawn at, so the legs only opened wider and
+   narrower and never passed each other. A run is a scissor. The thigh gap now
+   goes 58, -23, -58, 23 across the cycle: the legs cross twice, as they must.
+   Negative swings the foot forward, positive back. */
+@keyframes hip-a {
+  0%, 100% { transform: rotate(0deg); }     /* trailing, toe about to leave */
+  25%      { transform: rotate(-46deg); }   /* recovery — knee drives through */
+  50%      { transform: rotate(-58deg); }   /* reaching forward for the strike */
+  75%      { transform: rotate(-23deg); }   /* planted, body passing over it */
+}
+@keyframes hip-b {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(35deg); }
+  50%      { transform: rotate(58deg); }
+  75%      { transform: rotate(12deg); }
+}
 
-/* Peaks a quarter-cycle after the hip starts forward — the fold happens while
-   the leg travels, not while it is planted. */
+/* Nested inside the thigh, so these are flexion — how much the shin folds back
+   from wherever the thigh currently points. The 70deg peak lands on the slot
+   where the hip has already swung the knee forward; fold it while the thigh is
+   still vertical and the heel just sweeps backward at hip height, which is a
+   hurdle, not a stride. Knee forward + heel tucked is the recovery. */
 @keyframes knee-a {
-  0%, 100% { transform: rotate(10deg); }
-  25%      { transform: rotate(52deg); }
-  50%      { transform: rotate(6deg); }
-  75%      { transform: rotate(3deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(70deg); }
+  50%      { transform: rotate(-3deg); }
+  75%      { transform: rotate(-13deg); }
 }
 @keyframes knee-b {
-  0%, 100% { transform: rotate(6deg); }
-  25%      { transform: rotate(3deg); }
-  50%      { transform: rotate(10deg); }
-  75%      { transform: rotate(52deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-10deg); }
+  50%      { transform: rotate(3deg); }
+  75%      { transform: rotate(73deg); }
 }
 
-/* A runner rises on each footfall — twice per cycle. Without it the figure
-   glides, and gliding is the other half of why it looked like dancing. */
+/* The elbow stays where it was drawn — a runner holds it fixed and swings from
+   the shoulder, so there is nothing here to animate. */
+@keyframes arm-a {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(23deg); }
+  50%      { transform: rotate(52deg); }
+  75%      { transform: rotate(29deg); }
+}
+@keyframes arm-b {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-23deg); }
+  50%      { transform: rotate(-52deg); }
+  75%      { transform: rotate(-29deg); }
+}
+
+/* The body rises and falls twice per stride, and it has to agree with the legs:
+   up when they are at full split and carrying nothing, down as one comes under
+   the body and takes the weight. Half this cycle is one stride, so its 0% must
+   line up with the limbs' 0% and 50% — the two split poses. Run it the other way
+   round and the figure sinks as it leaps, which is the gliding, boneless look. */
 .poly:has(.limb) { animation: bob .36s ease-in-out infinite; }
 @keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-1.8%); }
+  0%, 100% { transform: translateY(-1.8%); }  /* legs split, weight off both */
+  50%      { transform: translateY(0); }      /* mid-stance, weight on one */
 }
 .poly--shatter:has(.limb),
 .poly--form:has(.limb) { animation: none; }
@@ -333,6 +374,7 @@ a { color: var(--parchment); text-decoration: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .poly,
   .poly polygon,
   .poly--shatter polygon,
   .poly--form polygon { animation: none; opacity: 1; transform: none; }
