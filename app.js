@@ -870,81 +870,104 @@ const MORPH_MS = 620;
    not thrown. */
 const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2);
 
-const centroidOf = (p) => {
-  let x = 0, y = 0;
-  for (let i = 0; i < p.length; i += 2) { x += p[i]; y += p[i + 1]; }
-  return [x / (p.length / 2), y / (p.length / 2)];
-};
-
-/**
- * `k` points spaced evenly along a polygon's perimeter.
- *
- * A triangle cannot be tweened into a hexagon vertex by vertex — there are not
- * enough of them. Resampling both sides to the same count gives every point on
- * one shape somewhere to go on the other, and spacing by arc length rather than
- * by vertex keeps the extra points spread out instead of bunched on one edge.
- */
-function resample(p, k) {
+const toPts = (p) => {
   const v = [];
   for (let i = 0; i < p.length; i += 2) v.push([p[i], p[i + 1]]);
-  const n = v.length, seg = [], upto = [];
-  let total = 0;
-  for (let i = 0; i < n; i++) {
-    const a = v[i], b = v[(i + 1) % n];
-    upto.push(total);
-    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    seg.push(d);
-    total += d;
-  }
-  if (!total) return Array.from({ length: k }, () => v[0].slice());
+  return v;
+};
 
-  const out = [];
-  for (let j = 0; j < k; j++) {
-    const t = (j / k) * total;
-    let i = 0;
-    while (i < n - 1 && upto[i + 1] <= t) i++;
-    const a = v[i], b = v[(i + 1) % n], u = seg[i] ? (t - upto[i]) / seg[i] : 0;
-    out.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]);
+const centroidOf = (v) => {
+  let x = 0, y = 0;
+  for (const q of v) { x += q[0]; y += q[1]; }
+  return [x / v.length, y / v.length];
+};
+
+/** Twice the signed area. Only the sign is wanted: the way the outline runs. */
+function shoelace(v) {
+  let a = 0;
+  for (let i = 0; i < v.length; i++) {
+    const b = v[(i + 1) % v.length];
+    a += v[i][0] * b[1] - b[0] * v[i][1];
+  }
+  return a;
+}
+
+/**
+ * Adds points until the outline has `k` of them, always splitting the longest
+ * edge.
+ *
+ * Deliberately *not* the same as spacing `k` points evenly round the perimeter,
+ * and the difference is most of the quality of the morph. Even spacing puts
+ * points where the arc length falls, so on a scalene triangle none of them land
+ * on the corners — asked for three points it moves them up to 20 units off the
+ * corners they came from, and the shape visibly rounds itself off before it
+ * travels anywhere. Splitting the longest edge keeps every corner that was
+ * drawn and only ever adds to the flat parts between them.
+ */
+function padTo(v, k) {
+  const out = v.map((q) => q.slice());
+  while (out.length < k) {
+    let at = 0, longest = -1;
+    for (let i = 0; i < out.length; i++) {
+      const a = out[i], b = out[(i + 1) % out.length];
+      const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (d > longest) { longest = d; at = i; }
+    }
+    const a = out[at], b = out[(at + 1) % out.length];
+    out.splice(at + 1, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
   }
   return out;
 }
 
 /**
- * Rolls `b` round to whichever starting point sits closest to `a`'s.
+ * Puts two outlines into correspondence: same count, same direction, same
+ * starting corner. All three matter, and they have to be done in that order.
  *
- * Both lists run the same way round the outline, but they do not start at the
- * same corner. Pair them as they come and the shape turns itself inside out
- * crossing over — every point taking the long way to a vertex that had one
- * right beside it.
+ * Direction is the one that bites. The facets are authored by hand and their
+ * outlines do not all run the same way round — 29 of them go against the other
+ * 111, and six subjects hold both at once. Pair two that disagree and every
+ * point walks to the far side of the shape, so it turns through itself on the
+ * way across. Reversing one is the whole fix.
+ *
+ * Then the start: both run the same way now but not from the same corner, so
+ * roll one round to whichever start sits closest.
  */
-function align(a, b) {
-  let best = 0, least = Infinity;
-  for (let r = 0; r < b.length; r++) {
+function correspond(src, dst) {
+  const k = Math.max(src.length, dst.length);
+  const a = padTo(src, k);
+  let b = padTo(dst, k);
+  if ((shoelace(a) < 0) !== (shoelace(b) < 0)) b = b.slice().reverse();
+
+  let best = b, least = Infinity;
+  for (let r = 0; r < k; r++) {
     let d = 0;
-    for (let i = 0; i < a.length; i++) {
-      const q = b[(i + r) % b.length];
+    for (let i = 0; i < k; i++) {
+      const q = b[(i + r) % k];
       d += (a[i][0] - q[0]) ** 2 + (a[i][1] - q[1]) ** 2;
     }
-    if (d < least) { least = d; best = r; }
+    if (d < least) { least = d; best = b.slice(r).concat(b.slice(0, r)); }
   }
-  return b.slice(best).concat(b.slice(0, best));
+  return [a, best];
 }
 
 /**
- * One travelling facet per pair.
+ * Which facet becomes which.
  *
- * The two subjects rarely have the same number of facets, and the leftovers are
- * the whole problem — done carelessly they pop in or wink out, which is the
- * disappearing this replaces. So a facet with no counterpart is given its
- * *nearest* one instead: extra destinations split out of the facet already
- * sitting there, extra sources merge into the one they are closest to. Both end
- * up exactly on top of a facet with the same shape and fill, which is to say
- * invisible, having got there by moving.
+ * By index, facet 3 of the sun goes to facet 3 of the book wherever those two
+ * happen to be, and the piece crosses itself getting there — it reads as a
+ * shuffle rather than a change of shape. Taking the closest free pair first and
+ * repeating cuts the total distance travelled by about half across the subject
+ * set, and short travel is what makes it look like settling.
+ *
+ * Whatever is left when one side runs out doubles up on its nearest
+ * counterpart: extra destinations split out of the facet already sitting there,
+ * extra sources merge into the one they are closest to. Both end exactly on top
+ * of a facet with the same shape and fill, so nothing pops in or winks out.
  */
-function morphPairs(from, to) {
-  const cFrom = from.map((fc) => centroidOf(fc.p));
-  const cTo = to.map((fc) => centroidOf(fc.p));
-  const nearest = (c, cs) => {
+function pairUp(from, to) {
+  const cf = from.map((fc) => centroidOf(toPts(fc.p)));
+  const ct = to.map((fc) => centroidOf(toPts(fc.p)));
+  const near = (c, cs) => {
     let best = 0, least = Infinity;
     cs.forEach((q, i) => {
       const d = (q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2;
@@ -953,15 +976,61 @@ function morphPairs(from, to) {
     return best;
   };
 
-  const pairs = [];
-  for (let i = 0; i < Math.max(from.length, to.length); i++) {
-    const src = i < from.length ? from[i] : from[nearest(cTo[i], cFrom)];
-    const dst = i < to.length ? to[i] : to[nearest(cFrom[i], cTo)];
-    const k = Math.max(src.p.length, dst.p.length) / 2;
-    const a = resample(src.p, k);
-    pairs.push({ a, b: align(a, resample(dst.p, k)), s0: src.s, s1: dst.s });
+  const cand = [];
+  for (let i = 0; i < from.length; i++) {
+    for (let j = 0; j < to.length; j++) {
+      cand.push([(cf[i][0] - ct[j][0]) ** 2 + (cf[i][1] - ct[j][1]) ** 2, i, j]);
+    }
   }
+  cand.sort((x, y) => x[0] - y[0]);
+
+  const tookSrc = new Set(), tookDst = new Set(), pairs = [];
+  for (const [, i, j] of cand) {
+    if (tookSrc.has(i) || tookDst.has(j)) continue;
+    tookSrc.add(i); tookDst.add(j);
+    pairs.push([i, j]);
+  }
+  to.forEach((_, j) => { if (!tookDst.has(j)) pairs.push([near(ct[j], cf), j]); });
+  from.forEach((_, i) => { if (!tookSrc.has(i)) pairs.push([i, near(cf[i], ct)]); });
   return pairs;
+}
+
+/* --- colour ------------------------------------------------------------- */
+
+/**
+ * The house colour lives in `--accent`, and CSS custom properties do not
+ * transition. Left alone it flips the instant the new piece renders, so the
+ * shading snapped to the new house while the shapes were still travelling —
+ * which is the one thing that gives away that a swap happened. Reading the hex
+ * off both ends and blending here is what keeps it gradual.
+ */
+function readAccent(el) {
+  const cs = getComputedStyle(el);
+  const rgb = (name) => {
+    const v = cs.getPropertyValue(name).trim();
+    const hex = v.match(/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+    if (hex) return [1, 2, 3].map((i) => parseInt(hex[i], 16));
+    const nums = v.match(/[\d.]+/g);
+    return nums && nums.length >= 3 ? nums.slice(0, 3).map(Number) : null;
+  };
+  const accent = rgb('--accent'), ash = rgb('--ash'), parchment = rgb('--parchment');
+  return accent && ash && parchment ? { accent, ash, parchment } : null;
+}
+
+const blend = (a, b, t) => [a[0] + (b[0] - a[0]) * t,
+  a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+/** facetFill's mix done in numbers, so the accent can sit part-way between two
+    houses. Same arithmetic — `color-mix` in srgb is a straight linear blend,
+    and the percentage is rounded the same way so the last frame matches the
+    stylesheet's own answer exactly. */
+function fillFrom(s, c) {
+  const v = Math.max(0, Math.min(1, s));
+  const [base, pct] = v <= 0.5
+    ? [c.ash, Math.round(22 + v * 156)]
+    : [c.parchment, Math.round(100 - (v - 0.5) * 112)];
+  const [r, g, b] = blend(base, c.accent, pct / 100);
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 }
 
 /**
@@ -970,9 +1039,20 @@ function morphPairs(from, to) {
  * shapes and fills, so the handover shows nothing — and because the real piece
  * is only inserted at the end, its idle loops all start together rather than
  * halfway through.
+ *
+ * The polygons are built in the *source* order and re-stacked into the
+ * destination order at the halfway point. Facets deliberately overlap — the
+ * runner's near limbs over its far ones, the face's cheek over its jaw — so one
+ * order is right at the start and the other at the end. Changing over in the
+ * middle, where the shapes are half-way to somewhere else, is the one moment
+ * neither is being looked at.
  */
-function morphArt(from, to, real, label, done) {
-  const pairs = morphPairs(from, to);
+function morphArt(from, to, real, label, was, now, done) {
+  const pairs = pairUp(from, to).map(([i, j]) => {
+    const [a, b] = correspond(toPts(from[i].p), toPts(to[j].p));
+    return { a, b, s0: from[i].s, s1: to[j].s, i, j };
+  });
+
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('class', 'poly poly--morph');
   svg.setAttribute('viewBox', '0 0 100 100');
@@ -980,17 +1060,35 @@ function morphArt(from, to, real, label, done) {
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', label);
 
-  const nodes = pairs.map(() => svg.appendChild(document.createElementNS(SVG_NS, 'polygon')));
+  const bySrc = pairs.map((pr, n) => [pr.i, n]).sort((x, y) => x[0] - y[0]);
+  const byDst = pairs.map((pr, n) => [pr.j, n]).sort((x, y) => x[0] - y[0]);
+  const nodes = pairs.map(() => document.createElementNS(SVG_NS, 'polygon'));
+  bySrc.forEach(([, n]) => svg.appendChild(nodes[n]));
   real.replaceWith(svg);
 
+  let restacked = false;
   const started = performance.now();
-  const frame = (now) => {
-    const e = ease(Math.min(1, (now - started) / MORPH_MS));
-    pairs.forEach((pr, i) => {
-      nodes[i].setAttribute('points', pr.a.map(([x, y], j) =>
-        `${(x + (pr.b[j][0] - x) * e).toFixed(2)},${(y + (pr.b[j][1] - y) * e).toFixed(2)}`).join(' '));
-      nodes[i].setAttribute('fill', facetFill(pr.s0 + (pr.s1 - pr.s0) * e));
+  const frame = (clock) => {
+    const e = ease(Math.min(1, (clock - started) / MORPH_MS));
+    const c = was && now
+      ? { accent: blend(was.accent, now.accent, e), ash: now.ash, parchment: now.parchment }
+      : null;
+
+    pairs.forEach((pr, n) => {
+      let d = '';
+      for (let v = 0; v < pr.a.length; v++) {
+        const [x, y] = pr.a[v];
+        d += `${(x + (pr.b[v][0] - x) * e).toFixed(2)},${(y + (pr.b[v][1] - y) * e).toFixed(2)} `;
+      }
+      nodes[n].setAttribute('points', d);
+      const s = pr.s0 + (pr.s1 - pr.s0) * e;
+      nodes[n].setAttribute('fill', c ? fillFrom(s, c) : facetFill(s));
     });
+
+    if (!restacked && e >= .5) {
+      restacked = true;
+      byDst.forEach(([, n]) => svg.appendChild(nodes[n]));
+    }
     if (e < 1) requestAnimationFrame(frame); else done(svg);
   };
   requestAnimationFrame(frame);
@@ -1012,7 +1110,12 @@ function stepStage(delta) {
   const { list } = stageList();
   if (list.length < 2 || swapping) return;
 
-  const leaving = $('.poly') ? facetsFor(list[stageIx]) : null;
+  /* Both reads have to straddle the render: the outgoing facets and the house
+     they were drawn in are gone the moment the new piece is in. */
+  const before = $('.poly');
+  const leaving = before ? facetsFor(list[stageIx]) : null;
+  const was = before ? readAccent(before) : null;
+
   stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
   const task = list[stageIx];
   renderHome();
@@ -1021,7 +1124,7 @@ function stepStage(delta) {
   if (!leaving || !real || reducedMotion()) return;
 
   swapping = true;
-  morphArt(leaving, facetsFor(task), real, task.label, (svg) => {
+  morphArt(leaving, facetsFor(task), real, task.label, was, readAccent(real), (svg) => {
     svg.replaceWith(real);
     swapping = false;
   });
