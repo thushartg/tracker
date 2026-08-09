@@ -1118,7 +1118,17 @@ function stepStage(delta) {
 
   stageIx = ((stageIx + delta) % list.length + list.length) % list.length;
   const task = list[stageIx];
+
+  /* The re-render replaces the very button being clicked, so whatever had focus
+     is destroyed with it. Put it back on the matching arrow, or a keyboard user
+     pages once and is dropped on the body. */
+  const held = document.activeElement;
+  const step = held && held.dataset ? held.dataset.step : null;
   renderHome();
+  if (step) {
+    const again = $(`.piece__nav[data-step="${step}"]`);
+    if (again && !again.disabled) again.focus({ preventScroll: true });
+  }
 
   const real = $('.poly');
   if (!leaving || !real || reducedMotion()) return;

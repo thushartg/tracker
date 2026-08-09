@@ -123,15 +123,37 @@ a { color: var(--parchment); text-decoration: none; }
   margin-left: calc(50vw - var(--s5) - var(--poly-w) / 2);
 }
 
-/* The bar and its hint centre on the viewport too, under the polygon. Their
-   width is set by their content, so the shift back is a transform — a percentage
-   there is a percentage of the element itself, which a margin cannot do. */
+/* The bar and its hint centre on the viewport too, under the polygon.
+
+   They used to do it the way the polygon does — sized to their content, then
+   pulled back by `translateX(-50%)`, since half of *your own* width is a thing
+   only a transform can express. That worked until the piece stopped being torn
+   down and rebuilt half a second after a click. A transform makes its element a
+   composited layer, the content width changes with every task label, and a
+   layer that resizes during a synchronous re-render leaves whatever now sticks
+   out beyond its new box unpainted. The result was a ghost of the previous
+   right-hand arrow, frozen mid-hover, sitting to the right of the real one.
+
+   So: span the viewport at a width that never changes, and let the row centre
+   its own children. `.wrap` on Home starts at the padding edge and its
+   max-width only caps how far the *column* runs, so starting here and running
+   `100vw - 2 * s5` lands both edges exactly on the viewport's margins. No
+   transform, no layer, nothing to leave behind. */
 [data-page="home"] .piece__bar,
 [data-page="home"] .piece__hint {
-  width: max-content;
-  max-width: calc(100vw - 2 * var(--s5));
-  margin-left: calc(50vw - var(--s5));
-  transform: translateX(-50%);
+  width: calc(100vw - 2 * var(--s5));
+  justify-content: center;
+  text-align: center;
+}
+
+/* Below this `.piece` takes on `var(--s4)` of padding, so these no longer start
+   at the wrap's padding edge and the span above overshoots by exactly that,
+   off the right-hand side. Same arithmetic, one more inset to subtract. */
+@media (max-width: 34rem) {
+  [data-page="home"] .piece__bar,
+  [data-page="home"] .piece__hint {
+    width: calc(100vw - 2 * var(--s5) - 2 * var(--s4));
+  }
 }
 
 .dateline {
